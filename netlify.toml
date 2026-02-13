@@ -1,0 +1,7 @@
+# Next.js on Netlify – ensures correct build and routing (fixes 404 on direct/refresh)
+[build]
+  command = "npm run build"
+
+# Use the official Next.js plugin so all routes and SSR work correctly
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
