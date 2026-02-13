@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --vectra-green: #54bd01;
+  --vectra-navy: #00263d;
+  --vectra-charcoal: #2d3142;
+  /* Footer (match Shopify vectra-footer) */
+  --vf-font: var(--font-poppins), Poppins, sans-serif;
+  --vf-hdr-size: 16px;
+  --vf-hdr-weight: 600;
+  --vf-menu-fs: 13px;
+  --vf-contact-size: 11px;
+  --vf-contact-weight: 400;
+  --vf-ico-size: 18px;
+  --vf-ico-color: #688bb0;
+  --vf-link: #ffffff;
+  --vf-link-h: #54bd01;
+  --vf-legal-size: 13px;
+  --vf-legal-weight: 400;
+  --vf-legal-hover: #1ab012;
+  --vf-copy-size: 12px;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-poppins), Poppins, sans-serif;
+}
+
+/* Hide scrollbar but keep scroll for sliders */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

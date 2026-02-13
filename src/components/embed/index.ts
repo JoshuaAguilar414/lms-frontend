@@ -1,0 +1,1 @@
+export { ScormEmbed } from './ScormEmbed';
