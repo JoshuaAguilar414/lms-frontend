@@ -4,7 +4,7 @@ export const COMPANY_INFO = {
   name: 'VECTRA INTERNATIONAL',
   tagline: 'Enabling Positive Impact',
   address: 'Chaussée de Wavre 1517B, B-1160 Brussels, Belgium',
-  phone: '+32 495 239088',
+  phone: '+32 262 06118',
   email: 'info@vectra-intl.com',
   marketplaceUrl: 'https://marketplace.vectra-intl.com',
   websiteUrl: 'https://vectra-intl.com',
