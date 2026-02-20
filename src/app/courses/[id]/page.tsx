@@ -2,100 +2,73 @@ import { notFound } from 'next/navigation';
 import { Card } from '@/components/ui';
 import { ScormEmbed } from '@/components/embed/ScormEmbed';
 import { RelatedCoursesSlider } from '@/components/courses/RelatedCoursesSlider';
-import type { TrainingItem as TrainingItemType, RelatedCourse } from '@/types';
+import type { RelatedCourse } from '@/types';
 
-// Helper function to build SCORM URL
-function buildScormUrl(course: TrainingItemType): string | undefined {
-  // If scormUrl is provided, use it directly
-  if (course.scormUrl) {
-    return course.scormUrl;
-  }
-  // If admissionId is provided, use SCORM player endpoint
-  if (course.admissionId) {
-    return `/scorm-player?admissionId=${course.admissionId}`;
-  }
-  // Fallback to local SCORM package
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const MARKETPLACE_BASE = 'https://marketplace.vectra-intl.com';
+
+function marketplaceProductUrl(handle: string): string {
+  return `${MARKETPLACE_BASE}/products/${handle}`;
+}
+
+function buildScormUrl(course: {
+  scormUrl?: string | null;
+  admissionId?: string | null;
+}): string | undefined {
+  if (course.scormUrl) return course.scormUrl;
+  if (course.admissionId) return `/scorm-player?admissionId=${course.admissionId}`;
   return (
     process.env.NEXT_PUBLIC_SCORM_SAMPLE_URL ||
     '/scorm/index.html'
   );
 }
 
-// In a real app this would come from API/database by id
-const COURSES_BY_ID: Record<string, TrainingItemType> = {
-  '1': {
-    id: '1',
-    title: 'What ESG Really Means: Breaking Down the Basics',
-    progress: '0/15',
-    thumbnail: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=112&h=112&fit=crop',
-    action: 'get_started',
-    scormUrl: '/scorm/index.html',
-  },
-  '2': {
-    id: '2',
-    title: 'Protecting Migrant Labor',
-    progress: '8/15',
-    thumbnail: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=112&h=112&fit=crop',
-    action: 'resume',
-    scormUrl: 'https://training.vectra-intl.com/lms-backend/Protecting Migrant Labor_Certificate Course (1)',
-  },
-  '3': {
-    id: '3',
-    title: 'Lorem Ipsum is simply dummy text of the printing',
-    progress: '15/15',
-    thumbnail: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=112&h=112&fit=crop',
-    action: 'view_certificate',
-    scormUrl: 'https://training.vectra-intl.com/lms-backend/Protecting Migrant Labor_Certificate Course (1)',
-  },
-};
+interface ApiCourse {
+  _id: string;
+  title: string;
+  description?: string;
+  thumbnail?: string;
+  handle?: string;
+  scormUrl?: string;
+  admissionId?: string;
+  totalLessons?: number;
+}
 
-const RELATED_COURSES: RelatedCourse[] = [
-  {
-    id: 'r1',
-    title: '3 Steps to Identify ESG Risks',
-    description: 'Score suppliers, track actions, export documentation.',
-    thumbnail: 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=400&h=250&fit=crop',
-    tag: 'Tool',
-    price: '£5.00',
-    href: 'https://marketplace.vectra-intl.com/products/how-to-report-forced-labor-in-agriculture',
-  },
-  {
-    id: 'r2',
-    title: 'A Boardroom Debate - Which ESG Initiative Should You Prioritize?',
-    description: 'Score suppliers, track actions, export documentation.',
-    thumbnail: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&h=250&fit=crop',
-    tag: 'Tool',
-    price: '£5.00',
-    href: 'https://marketplace.vectra-intl.com/products/how-to-report-forced-labor-in-agriculture',
-  },
-  {
-    id: 'r3',
-    title: 'Acronyms Used in ESG Area - Introduction',
-    description: 'Score suppliers, track actions, export documentation.',
-    thumbnail: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400&h=250&fit=crop',
-    tag: 'Tool',
-    price: '£0.00',
-    href: 'https://marketplace.vectra-intl.com/products/how-to-report-forced-labor-in-agriculture',
-  },
-  {
-    id: 'r4',
-    title: 'Protecting Migrant Labor',
-    description: 'Score suppliers, track actions, export documentation.',
-    thumbnail: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=250&fit=crop',
-    tag: 'Tool',
-    price: '£5.00',
-    href: 'https://marketplace.vectra-intl.com/products/how-to-report-forced-labor-in-agriculture',
-  },
-  {
-    id: 'r5',
-    title: 'What ESG Really Means: Breaking Down the Basics',
-    description: 'Score suppliers, track actions, export documentation.',
-    thumbnail: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=250&fit=crop',
-    tag: 'Tool',
-    price: '£5.00',
-    href: 'https://marketplace.vectra-intl.com/products/how-to-report-forced-labor-in-agriculture',
-  },
-];
+async function fetchCourse(id: string): Promise<ApiCourse | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/courses/${id}`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+async function fetchCourses(): Promise<ApiCourse[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/courses`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
+}
+
+function toRelatedCourse(c: ApiCourse): RelatedCourse {
+  return {
+    id: c._id,
+    title: c.title,
+    description: c.description ?? '',
+    thumbnail: c.thumbnail ?? 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=250&fit=crop',
+    tag: 'Course',
+    price: '',
+    href: c.handle ? marketplaceProductUrl(c.handle) : `/courses/${c._id}`,
+  };
+}
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -103,10 +76,20 @@ interface PageProps {
 
 export default async function CourseProgressPage({ params }: PageProps) {
   const { id } = await params;
-  const course = COURSES_BY_ID[id];
+
+  const [course, allCourses] = await Promise.all([
+    fetchCourse(id),
+    fetchCourses(),
+  ]);
+
   if (!course) notFound();
 
   const scormUrl = buildScormUrl(course);
+
+  const relatedCourses: RelatedCourse[] = allCourses
+    .filter((c) => c._id !== id)
+    .slice(0, 8)
+    .map(toRelatedCourse);
 
   return (
     <div className="bg-gray-100">
@@ -126,14 +109,15 @@ export default async function CourseProgressPage({ params }: PageProps) {
               <p className="text-center text-sm">
                 No SCORM package URL configured for this course.
                 <br />
-                Set <code className="rounded bg-gray-200 px-1">scormUrl</code> on the course or{' '}
-                <code className="rounded bg-gray-200 px-1">NEXT_PUBLIC_SCORM_SAMPLE_URL</code> in .env to embed content.
+                Set <code className="rounded bg-gray-200 px-1">scormUrl</code> or{' '}
+                <code className="rounded bg-gray-200 px-1">admissionId</code> on the course, or{' '}
+                <code className="rounded bg-gray-200 px-1">NEXT_PUBLIC_SCORM_SAMPLE_URL</code> in .env.
               </p>
             </div>
           </Card>
         )}
         <Card className="mt-4 mb-4 pb-8">
-          <RelatedCoursesSlider courses={RELATED_COURSES} />
+          <RelatedCoursesSlider courses={relatedCourses} />
         </Card>
       </div>
     </div>

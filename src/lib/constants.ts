@@ -1,5 +1,11 @@
 import type { FooterLinkGroup } from '@/types';
 
+/** Base URL of this LMS app (for Shopify "My Courses" redirect target). */
+const getLmsBaseUrl = () =>
+  typeof window !== 'undefined'
+    ? window.location.origin
+    : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
 export const COMPANY_INFO = {
   name: 'VECTRA INTERNATIONAL',
   tagline: 'Enabling Positive Impact',
@@ -7,7 +13,38 @@ export const COMPANY_INFO = {
   phone: '+32 262 06118',
   email: 'info@vectra-intl.com',
   marketplaceUrl: 'https://marketplace.vectra-intl.com',
+  /**
+   * LMS base URL. Use this when building the "My Courses" redirect link on Shopify.
+   * Redirect URL should be: {lmsUrl}/auth/callback?token={shopify-session-jwt}
+   */
+  get lmsUrl() {
+    return getLmsBaseUrl();
+  },
+  /** Full URL for Shopify → LMS auth callback (My Courses redirect). */
+  get lmsAuthCallbackUrl() {
+    return `${getLmsBaseUrl()}/auth/callback`;
+  },
+  /** Customer account order detail URL pattern (use with order ID) */
+  marketplaceOrderUrl: (orderId: string) =>
+    `https://marketplace.vectra-intl.com/account/orders/${orderId}`,
+  /** Product page on marketplace (use Shopify product handle) */
+  marketplaceProductUrl: (handle: string) =>
+    `https://marketplace.vectra-intl.com/products/${handle}`,
   websiteUrl: 'https://vectra-intl.com',
+  /** Shopify customer account URLs (shop ID 77453132000 = mock for now; replace with real shop ID when ready) */
+  get shopifyAccountShopId() {
+    return typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SHOPIFY_ACCOUNT_SHOP_ID
+      ? process.env.NEXT_PUBLIC_SHOPIFY_ACCOUNT_SHOP_ID
+      : '77453132000';
+  },
+  /** My Profile: redirects to Shopify account profile */
+  get shopifyAccountProfileUrl() {
+    return `https://shopify.com/${this.shopifyAccountShopId}/account/profile`;
+  },
+  /** My Orders: redirects to Shopify account orders */
+  get shopifyAccountOrdersUrl() {
+    return `https://shopify.com/${this.shopifyAccountShopId}/account/orders`;
+  },
 } as const;
 
 export const FOOTER_LINKS: FooterLinkGroup[] = [

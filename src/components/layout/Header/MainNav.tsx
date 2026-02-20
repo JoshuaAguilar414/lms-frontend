@@ -7,6 +7,7 @@ import { useEffect, useState, useRef } from 'react';
 import { ChevronDownIcon } from '@/components/icons';
 import { UserAvatar } from '@/components/ui';
 import { SearchBar } from './SearchBar';
+import { COMPANY_INFO } from '@/lib/constants';
 
 const USER_DROPDOWN = {
   name: 'Gustian Lee',
@@ -158,22 +159,26 @@ export function MainNav() {
                 </div>
                 <div className="border-t border-gray-200" />
                 <div className="py-1">
-                  <Link
-                    href="/profile-settings"
+                  <a
+                    href={COMPANY_INFO.shopifyAccountProfileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100"
                     role="menuitem"
                     onClick={() => setUserMenuOpen(false)}
                   >
                     My Profile
-                  </Link>
-                  <Link
-                    href="/courses"
+                  </a>
+                  <a
+                    href={COMPANY_INFO.shopifyAccountOrdersUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100"
                     role="menuitem"
                     onClick={() => setUserMenuOpen(false)}
                   >
                     My Orders
-                  </Link>
+                  </a>
                   <button
                     type="button"
                     className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100"

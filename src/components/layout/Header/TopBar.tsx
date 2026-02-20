@@ -9,8 +9,7 @@ export function TopBar() {
     pathname === '/' ||
     pathname.startsWith('/purchases') ||
     pathname.startsWith('/courses') ||
-    pathname.startsWith('/learning') ||
-    pathname.startsWith('/profile-settings');
+    pathname.startsWith('/learning');
 
   return (
     <div
