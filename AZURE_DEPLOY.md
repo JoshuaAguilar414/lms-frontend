@@ -133,6 +133,12 @@ You do **not** need to set `PORT` or `WEBSITES_PORT` in App settings; Azure sets
 3. **Restart**
    - Configuration → **Save** (if you changed settings) → **Restart** the app.
 
+**If Netlify works but Azure shows "Application Error":**  
+- **Log stream** (Monitoring → Log stream): see the real Node/Next.js error.  
+- Set **Node 22** on Azure: **Configuration** → **Application settings** → add `WEBSITE_NODE_DEFAULT_VERSION` = `~22`, then Save and Restart.  
+- Ensure **Startup Command** is empty or `npm start` (not `npm run build && npm start`).  
+- After any config change: **Save** → **Restart** → try the URL again.
+
 ---
 
 ## Summary checklist
