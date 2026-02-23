@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { api, setStoredToken } from '@/lib/api';
@@ -30,7 +30,7 @@ function isLmsTokenPayload(payload: Record<string, unknown> | null): boolean {
  * 2) Or direct: {FRONTEND_URL}/auth/login?jwtToken=... (external JWT, e.g. ApnaSite). Frontend and backend can be different domains.
  * Accepts both LMS token (store and redirect) and external JWT (exchange via API then redirect).
  */
-export default function AuthLoginPage() {
+function AuthLoginContent() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -108,5 +108,19 @@ export default function AuthLoginPage() {
     <div className="flex min-h-[40vh] items-center justify-center">
       <p className="text-gray-600">Redirecting to My Courses…</p>
     </div>
+  );
+}
+
+export default function AuthLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <p className="text-gray-600">Signing you in…</p>
+        </div>
+      }
+    >
+      <AuthLoginContent />
+    </Suspense>
   );
 }
