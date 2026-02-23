@@ -54,6 +54,12 @@ export const api = {
         '/api/auth/shopify-verify',
         { method: 'POST', body: JSON.stringify({ token: shopifyToken }) }
       ),
+    /** External JWT login (e.g. training.vectra-intl.com/auth/login?jwtToken=...). Returns LMS token. */
+    externalLogin: (jwtToken: string) =>
+      request<{ token: string; user: { id: string; email: string; name: string } }>(
+        '/api/auth/external-login',
+        { method: 'POST', body: JSON.stringify({ jwtToken }) }
+      ),
     /** Current user (from backend; data synced from Shopify). Requires auth token. */
     me: () =>
       request<{

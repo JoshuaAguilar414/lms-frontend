@@ -2,9 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { getStoredToken } from '@/lib/api';
+import { COMPANY_INFO } from '@/lib/constants';
 
 export function TopBar() {
   const pathname = usePathname();
+  const [hasToken, setHasToken] = useState(false);
+
+  useEffect(() => {
+    setHasToken(!!getStoredToken());
+  }, []);
+
   const isMyCourses =
     pathname === '/' ||
     pathname.startsWith('/purchases') ||
@@ -20,7 +29,7 @@ export function TopBar() {
         <ul className="flex list-none flex-row items-center gap-6 p-0 m-0" role="list">
           <li>
             <Link
-              href="https://marketplace.vectra-intl.com/"
+              href={COMPANY_INFO.marketplaceUrl}
               target="_blank"
               rel="noopener noreferrer"
               className={`text-sm font-normal transition-colors hover:text-[#54bd01] ${!isMyCourses ? 'font-semibold underline' : 'no-underline'}`}
@@ -28,12 +37,24 @@ export function TopBar() {
               Marketplace
             </Link>
           </li>
+          {hasToken && (
+            <li>
+              <Link
+                href="/courses"
+                className={`text-sm font-normal transition-colors hover:text-[#54bd01] no-underline ${isMyCourses ? 'font-semibold underline' : ''}`}
+              >
+                My Courses
+              </Link>
+            </li>
+          )}
           <li>
             <Link
-              href="/courses"
-              className={`text-sm font-normal transition-colors hover:text-[#54bd01] no-underline ${isMyCourses ? 'font-semibold underline' : ''}`}
+              href={COMPANY_INFO.websiteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-normal transition-colors hover:text-[#54bd01] no-underline"
             >
-              My Courses
+              VECTRA HOME
             </Link>
           </li>
         </ul>

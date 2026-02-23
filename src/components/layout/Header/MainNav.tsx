@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { ChevronDownIcon } from '@/components/icons';
 import { UserAvatar } from '@/components/ui';
+import { getStoredToken } from '@/lib/api';
 import { SearchBar } from './SearchBar';
 import { COMPANY_INFO } from '@/lib/constants';
 
@@ -32,18 +33,22 @@ function CloseIcon({ className = 'w-6 h-6' }: { className?: string }) {
 
 type NavLink = { label: string; href: string; hasDropdown?: boolean; external?: boolean };
 
-const navLinks: NavLink[] = [
+const allNavLinks: NavLink[] = [
   { label: 'Dashboard', href: '/' },
   { label: 'My Courses', href: '/purchases' },
-  { label: 'VECTRA HOME', href: 'https://vectra-intl.com/', external: true },
 ];
 
 export function MainNav() {
   const pathname = usePathname();
   const isRestrictedPage = pathname === '/restricted';
+  const [hasToken, setHasToken] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setHasToken(!!getStoredToken());
+  }, []);
 
   useEffect(() => {
     if (mobileMenuOpen) {
@@ -111,7 +116,7 @@ export function MainNav() {
             />
           </Link>
           <div className="hidden md:flex items-center gap-6">
-            {navLinks.map(({ label, href, hasDropdown, external }) => {
+            {(hasToken ? allNavLinks : allNavLinks.filter((l) => l.external)).map(({ label, href, hasDropdown, external }) => {
               const isActive = !external && href !== '#' && (pathname === href || pathname.startsWith(href + '/'));
               const linkClass = isActive
                 ? 'text-sm font-semibold text-[#54bd01]'
@@ -134,6 +139,7 @@ export function MainNav() {
         <SearchBar />
 
         <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+          {hasToken ? (
           <div className="relative" ref={userMenuRef}>
             <button
               type="button"
@@ -194,6 +200,17 @@ export function MainNav() {
               </div>
             )}
           </div>
+          ) : (
+            <Link
+              href={COMPANY_INFO.marketplaceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#54bd01' }}
+            >
+              Sign in
+            </Link>
+          )}
         </div>
       </div>
 
@@ -210,7 +227,7 @@ export function MainNav() {
                 <SearchBar inline />
               </div>
               <ul className="space-y-1">
-                {navLinks.map(({ label, href, hasDropdown, external }) => {
+                {(hasToken ? allNavLinks : allNavLinks.filter((l) => l.external)).map(({ label, href, hasDropdown, external }) => {
                   const isActive = !external && href !== '#' && (pathname === href || pathname.startsWith(href + '/'));
                   const linkClass = isActive
                     ? 'font-semibold text-[#54bd01]'

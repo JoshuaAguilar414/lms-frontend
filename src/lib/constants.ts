@@ -14,15 +14,24 @@ export const COMPANY_INFO = {
   email: 'info@vectra-intl.com',
   marketplaceUrl: 'https://marketplace.vectra-intl.com',
   /**
-   * LMS base URL. Use this when building the "My Courses" redirect link on Shopify.
-   * Redirect URL should be: {lmsUrl}/auth/callback?token={shopify-session-jwt}
+   * LMS frontend base URL (e.g. https://training.vectra-intl.com).
+   * My Courses: Shopify links to {backend}/api/courses/user/{customerId}/{email};
+   * backend redirects to {lmsUrl}/auth/login?jwtToken=<lms-token>.
    */
   get lmsUrl() {
     return getLmsBaseUrl();
   },
-  /** Full URL for Shopify → LMS auth callback (My Courses redirect). */
-  get lmsAuthCallbackUrl() {
-    return `${getLmsBaseUrl()}/auth/callback`;
+  /** My Courses step 1: backend API URL for the redirect (use backend domain, not frontend). */
+  get lmsBackendMyCoursesUrl() {
+    const apiBase =
+      typeof window !== 'undefined'
+        ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '')
+        : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    return `${apiBase}/api/courses/user`;
+  },
+  /** My Courses step 2: frontend login page (where backend redirects with jwtToken). */
+  get lmsAuthLoginUrl() {
+    return `${getLmsBaseUrl()}/auth/login`;
   },
   /** Customer account order detail URL pattern (use with order ID) */
   marketplaceOrderUrl: (orderId: string) =>

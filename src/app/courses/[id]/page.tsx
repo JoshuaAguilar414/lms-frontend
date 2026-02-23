@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { AuthGuard } from '@/components/auth';
 import { Card } from '@/components/ui';
 import { ScormEmbed } from '@/components/embed/ScormEmbed';
 import { RelatedCoursesSlider } from '@/components/courses/RelatedCoursesSlider';
@@ -92,6 +93,7 @@ export default async function CourseProgressPage({ params }: PageProps) {
     .map(toRelatedCourse);
 
   return (
+    <AuthGuard>
     <div className="bg-gray-100">
       <div className="mx-auto max-w-screen-2xl px-4 py-3 sm:px-6 lg:px-8">
         {scormUrl ? (
@@ -121,5 +123,6 @@ export default async function CourseProgressPage({ params }: PageProps) {
         </Card>
       </div>
     </div>
+    </AuthGuard>
   );
 }
