@@ -1,0 +1,23 @@
+<manifest xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2" xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" identifier="com.scorm.manifesttemplates.scorm12" version="1" xsi:schemaLocation="http://www.imsproject.org/xsd/imscp_rootv1p1p2 imscp_rootv1p1p2.xsd
+                                                                                                                                                                                                                                                               http://www.imsglobal.org/xsd/imsmd_rootv1p2p1 imsmd_rootv1p2p1.xsd
+                                                                                                                                                                                                                                                               http://www.adlnet.org/xsd/adlcp_rootv1p2 adlcp_rootv1p2.xsd">
+  <metadata>
+    <schema>ADL SCORM</schema>
+    <schemaversion>1.2</schemaversion>
+
+  </metadata>
+  <organizations default="B0">
+    <organization identifier="B0">
+      <title>Understanding Climate Risk: What Businesses Must Know</title>
+      <item identifier="i1" identifierref="cml7ur6k5006ol204p13mbqev" isvisible="true">
+        <title>Understanding Climate Risk: What Businesses Must Know</title>
+        <adlcp:datafromlms>f06f850f-1171-444c-a8d1-43bc267f87d1</adlcp:datafromlms>
+      </item>
+    </organization>
+  </organizations>
+  <resources>
+    <resource identifier="cml7ur6k5006ol204p13mbqev" type="webcontent" adlcp:scormtype="sco" href="index.html">
+      <file href="index.html" />
+    </resource>
+  </resources>
+</manifest>

@@ -3,10 +3,12 @@ import { AuthGuard } from '@/components/auth';
 import { Card } from '@/components/ui';
 import { ScormEmbed } from '@/components/embed/ScormEmbed';
 import { RelatedCoursesSlider } from '@/components/courses/RelatedCoursesSlider';
+import { getMockScormCourse, isMockScormId, MOCK_SCORM_COURSES } from '@/data/mockScormCourses';
 import type { RelatedCourse } from '@/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const MARKETPLACE_BASE = 'https://marketplace.vectra-intl.com';
+const isDemoScorm = process.env.NEXT_PUBLIC_DEMO_SCORM === 'true';
 
 function marketplaceProductUrl(handle: string): string {
   return `${MARKETPLACE_BASE}/products/${handle}`;
@@ -78,22 +80,34 @@ interface PageProps {
 export default async function CourseProgressPage({ params }: PageProps) {
   const { id } = await params;
 
-  const [course, allCourses] = await Promise.all([
+  const [apiCourse, allCourses] = await Promise.all([
     fetchCourse(id),
     fetchCourses(),
   ]);
+
+  const mockCourse = isMockScormId(id) ? getMockScormCourse(id) : undefined;
+  const course = apiCourse ?? (mockCourse ? { _id: mockCourse.id, title: mockCourse.title, scormUrl: mockCourse.scormUrl, thumbnail: mockCourse.thumbnail, totalLessons: mockCourse.totalLessons } : null);
 
   if (!course) notFound();
 
   const scormUrl = buildScormUrl(course);
 
-  const relatedCourses: RelatedCourse[] = allCourses
-    .filter((c) => c._id !== id)
-    .slice(0, 8)
-    .map(toRelatedCourse);
+  const relatedCourses: RelatedCourse[] = course._id.startsWith('mock-scorm-')
+    ? MOCK_SCORM_COURSES.filter((c) => c.id !== id).slice(0, 8).map((c) => ({
+        id: c.id,
+        title: c.title,
+        description: '',
+        thumbnail: c.thumbnail,
+        tag: 'Course',
+        price: '',
+        href: `/courses/${c.id}`,
+      }))
+    : allCourses
+        .filter((c) => c._id !== id)
+        .slice(0, 8)
+        .map(toRelatedCourse);
 
-  return (
-    <AuthGuard>
+  const content = (
     <div className="bg-gray-100">
       <div className="mx-auto max-w-screen-2xl px-4 py-3 sm:px-6 lg:px-8">
         {scormUrl ? (
@@ -123,6 +137,6 @@ export default async function CourseProgressPage({ params }: PageProps) {
         </Card>
       </div>
     </div>
-    </AuthGuard>
   );
+  return isDemoScorm ? content : <AuthGuard>{content}</AuthGuard>;
 }

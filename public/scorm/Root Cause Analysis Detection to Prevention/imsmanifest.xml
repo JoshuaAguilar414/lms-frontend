@@ -1,0 +1,23 @@
+<manifest xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2" xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" identifier="com.scorm.manifesttemplates.scorm12" version="1" xsi:schemaLocation="http://www.imsproject.org/xsd/imscp_rootv1p1p2 imscp_rootv1p1p2.xsd
+                                                                                                                                                                                                                                                               http://www.imsglobal.org/xsd/imsmd_rootv1p2p1 imsmd_rootv1p2p1.xsd
+                                                                                                                                                                                                                                                               http://www.adlnet.org/xsd/adlcp_rootv1p2 adlcp_rootv1p2.xsd">
+  <metadata>
+    <schema>ADL SCORM</schema>
+    <schemaversion>1.2</schemaversion>
+
+  </metadata>
+  <organizations default="B0">
+    <organization identifier="B0">
+      <title>Root Cause Analysis: Detection to Prevention</title>
+      <item identifier="i1" identifierref="cmlkhg75d01dql4047n5t2va0" isvisible="true">
+        <title>Root Cause Analysis: Detection to Prevention</title>
+        <adlcp:datafromlms>9e50e2c9-0ce9-4427-8596-80503cbe5fd4</adlcp:datafromlms>
+      </item>
+    </organization>
+  </organizations>
+  <resources>
+    <resource identifier="cmlkhg75d01dql4047n5t2va0" type="webcontent" adlcp:scormtype="sco" href="index.html">
+      <file href="index.html" />
+    </resource>
+  </resources>
+</manifest>

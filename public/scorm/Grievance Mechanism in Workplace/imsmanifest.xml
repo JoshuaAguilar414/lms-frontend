@@ -1,0 +1,23 @@
+<manifest xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2" xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" identifier="com.scorm.manifesttemplates.scorm12" version="1" xsi:schemaLocation="http://www.imsproject.org/xsd/imscp_rootv1p1p2 imscp_rootv1p1p2.xsd
+                                                                                                                                                                                                                                                               http://www.imsglobal.org/xsd/imsmd_rootv1p2p1 imsmd_rootv1p2p1.xsd
+                                                                                                                                                                                                                                                               http://www.adlnet.org/xsd/adlcp_rootv1p2 adlcp_rootv1p2.xsd">
+  <metadata>
+    <schema>ADL SCORM</schema>
+    <schemaversion>1.2</schemaversion>
+
+  </metadata>
+  <organizations default="B0">
+    <organization identifier="B0">
+      <title>Understanding Grievance Mechanism in the Workplace</title>
+      <item identifier="i1" identifierref="cmkxr2hq600pzky04udaxk5rr" isvisible="true">
+        <title>Understanding Grievance Mechanism in the Workplace</title>
+        <adlcp:datafromlms>fc1c8b90-249b-4aab-a99b-68288b3e5637</adlcp:datafromlms>
+      </item>
+    </organization>
+  </organizations>
+  <resources>
+    <resource identifier="cmkxr2hq600pzky04udaxk5rr" type="webcontent" adlcp:scormtype="sco" href="index.html">
+      <file href="index.html" />
+    </resource>
+  </resources>
+</manifest>
