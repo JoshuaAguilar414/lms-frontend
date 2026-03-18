@@ -12,21 +12,21 @@ export function FooterBottom() {
         </p>
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
           <Link
-            href="/pages/terms-and-conditions"
+            href="https://marketplace.vectra-intl.com/pages/terms-and-conditions"
             className="text-white no-underline hover:underline hover:text-[#1ab012] transition-colors"
             style={{ fontSize: 'var(--vf-legal-size)', fontWeight: 'var(--vf-legal-weight)' }}
           >
             Terms & Conditions
           </Link>
           <Link
-            href="/pages/privacy-policy"
+            href="https://marketplace.vectra-intl.com/pages/privacy-policy"
             className="text-white no-underline hover:underline hover:text-[#1ab012] transition-colors"
             style={{ fontSize: 'var(--vf-legal-size)', fontWeight: 'var(--vf-legal-weight)' }}
           >
             Privacy Policy
           </Link>
           <Link
-            href="/pages/cookie-policy"
+            href="https://marketplace.vectra-intl.com/pages/cookie-policy"
             className="text-white no-underline hover:underline hover:text-[#1ab012] transition-colors"
             style={{ fontSize: 'var(--vf-legal-size)', fontWeight: 'var(--vf-legal-weight)' }}
           >
