@@ -2,17 +2,17 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { ChevronDownIcon } from '@/components/icons';
 import { UserAvatar } from '@/components/ui';
-import { getStoredToken } from '@/lib/api';
+import { api, getStoredToken, setStoredToken } from '@/lib/api';
 import { SearchBar } from './SearchBar';
 import { COMPANY_INFO } from '@/lib/constants';
 
-const USER_DROPDOWN = {
-  name: 'Gustian Lee',
-  email: 'dev+admin@vectra-intl.com',
+const USER_DROPDOWN_FALLBACK = {
+  name: 'User',
+  email: '',
 };
 
 function HamburgerIcon({ className = 'w-6 h-6' }: { className?: string }) {
@@ -40,8 +40,11 @@ const allNavLinks: NavLink[] = [
 
 export function MainNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const isRestrictedPage = pathname === '/restricted';
   const [hasToken, setHasToken] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -49,6 +52,30 @@ export function MainNav() {
   useEffect(() => {
     setHasToken(!!getStoredToken());
   }, []);
+
+  // Load real user profile from backend using current JWT.
+  // Backend resolves `userId` from the LMS JWT, which originates from Shopify login flow.
+  useEffect(() => {
+    if (!hasToken) return;
+
+    let cancelled = false;
+    api.auth
+      .me()
+      .then((u) => {
+        if (cancelled) return;
+        setUserName(u?.name ?? null);
+        setUserEmail(u?.email ?? null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setUserName(null);
+        setUserEmail(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasToken]);
 
   useEffect(() => {
     if (mobileMenuOpen) {
@@ -149,7 +176,7 @@ export function MainNav() {
               aria-expanded={userMenuOpen}
               aria-haspopup="true"
             >
-              <UserAvatar name={USER_DROPDOWN.name} size="sm" />
+              <UserAvatar name={userName ?? USER_DROPDOWN_FALLBACK.name} size="sm" />
             </button>
             {userMenuOpen && (
               <div
@@ -158,17 +185,21 @@ export function MainNav() {
               >
                 <div className="px-4 pb-3">
                   <div className="flex flex-col items-center text-center">
-                    <UserAvatar name={USER_DROPDOWN.name} size="lg" className="mb-2" />
-                    <p className="text-sm font-semibold text-gray-900">{USER_DROPDOWN.name}</p>
-                    <p className="text-xs text-gray-500">{USER_DROPDOWN.email}</p>
+                    <UserAvatar
+                      name={userName ?? USER_DROPDOWN_FALLBACK.name}
+                      size="lg"
+                      className="mb-2"
+                    />
+                    <p className="text-sm font-semibold text-gray-900">
+                      {userName ?? USER_DROPDOWN_FALLBACK.name}
+                    </p>
+                    <p className="text-xs text-gray-500">{userEmail ?? USER_DROPDOWN_FALLBACK.email}</p>
                   </div>
                 </div>
                 <div className="border-t border-gray-200" />
                 <div className="py-1">
                   <a
-                    href={COMPANY_INFO.shopifyAccountProfileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href="/profile-settings"
                     className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100"
                     role="menuitem"
                     onClick={() => setUserMenuOpen(false)}
@@ -176,9 +207,7 @@ export function MainNav() {
                     My Profile
                   </a>
                   <a
-                    href={COMPANY_INFO.shopifyAccountOrdersUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href="/purchases"
                     className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100"
                     role="menuitem"
                     onClick={() => setUserMenuOpen(false)}
@@ -191,7 +220,11 @@ export function MainNav() {
                     role="menuitem"
                     onClick={() => {
                       setUserMenuOpen(false);
-                      // TODO: sign out
+                      setStoredToken(null);
+                      setHasToken(false);
+                      setUserName(null);
+                      setUserEmail(null);
+                      router.replace('/');
                     }}
                   >
                     Sign out
