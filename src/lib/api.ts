@@ -33,10 +33,45 @@ async function request<T>(
   };
   if (token) (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(url, { ...init, headers });
-  const data = await res.json().catch(() => ({}));
+  const method = (init.method ?? 'GET').toString().toUpperCase();
+  const isGet = method === 'GET';
+
+  // Personalized, authenticated data should not be served from an old cache.
+  // This also avoids `304 Not Modified` responses that come back without a JSON body.
+  if (isGet) {
+    (headers as Record<string, string>)['Cache-Control'] =
+      (headers as Record<string, string>)['Cache-Control'] ?? 'no-store, no-cache, must-revalidate';
+    (headers as Record<string, string>)['Pragma'] =
+      (headers as Record<string, string>)['Pragma'] ?? 'no-cache';
+    if ((init as RequestInit).cache == null) (init as RequestInit).cache = 'no-store';
+  }
+
+  let res = await fetch(url, { ...init, headers });
+
+  if (isGet && res.status === 304) {
+    // Retry once with explicit no-store/no-cache to force a fresh body.
+    const retryHeaders = {
+      ...(headers as Record<string, string>),
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      Pragma: 'no-cache',
+    };
+    res = await fetch(url, { ...init, cache: 'no-store', headers: retryHeaders });
+  }
+
+  const bodyText = await res.text();
+  let data: unknown = {};
+  if (bodyText) {
+    try {
+      data = JSON.parse(bodyText);
+    } catch {
+      data = {};
+    }
+  }
+
   if (!res.ok) {
-    const err = new Error(data?.error || data?.message || res.statusText) as Error & {
+    const err = new Error(
+      (data as any)?.error || (data as any)?.message || res.statusText
+    ) as Error & {
       status?: number;
       body?: unknown;
     };
@@ -44,6 +79,7 @@ async function request<T>(
     err.body = data;
     throw err;
   }
+
   return data as T;
 }
 
