@@ -20,7 +20,8 @@ export interface PurchaseItem {
   thumbnail: string;
   author: string;
   status: string;
-  quantity: number;
+  cost: number;
+  currencyCode: string;
   /** Course or product detail URL */
   productUrl?: string;
 }
@@ -28,10 +29,32 @@ export interface PurchaseItem {
 const PLACEHOLDER_IMAGE =
   'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=112&h=112&fit=crop';
 const ITEMS_PER_PAGE = 10;
+const DEFAULT_CURRENCY = 'USD';
+
+const toAmount = (value?: string | number | null): number => {
+  if (value == null) return 0;
+  const parsed = typeof value === 'number' ? value : Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatMoney = (amount: number, currencyCode = DEFAULT_CURRENCY): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currencyCode || DEFAULT_CURRENCY,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
 
 function enrollmentToPurchaseItem(e: EnrollmentResponse): PurchaseItem {
   const course = e.courseId;
-  const lineItem = e.orderData?.lineItems?.edges?.[0]?.node;
+  const lineItems = e.orderData?.lineItems?.edges ?? [];
+  const matchingLineItem =
+    lineItems.find((edge) => {
+      const productId = edge?.node?.variant?.product?.id?.split('/').pop();
+      return Boolean(productId && e.shopifyProductId && productId === e.shopifyProductId);
+    })?.node ?? null;
+  const lineItem = matchingLineItem ?? lineItems[0]?.node;
   const product = lineItem?.variant?.product;
   const progress = e.progress;
   const status = progress?.completed ? 'Complete' : 'In progress';
@@ -48,6 +71,18 @@ function enrollmentToPurchaseItem(e: EnrollmentResponse): PurchaseItem {
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-');
   const productUrl = `${COMPANY_INFO.marketplaceUrl}/products/${encodeURIComponent(slug || title)}`;
+  const quantity = Math.max(1, lineItem?.quantity ?? 1);
+  const lineTotal =
+    toAmount(lineItem?.discountedTotalSet?.shopMoney?.amount) ||
+    toAmount(lineItem?.originalTotalSet?.shopMoney?.amount) ||
+    toAmount(lineItem?.originalUnitPriceSet?.shopMoney?.amount) * quantity ||
+    toAmount(e.orderData?.currentTotalPriceSet?.shopMoney?.amount);
+  const currencyCode =
+    lineItem?.discountedTotalSet?.shopMoney?.currencyCode ||
+    lineItem?.originalTotalSet?.shopMoney?.currencyCode ||
+    lineItem?.originalUnitPriceSet?.shopMoney?.currencyCode ||
+    e.orderData?.currentTotalPriceSet?.shopMoney?.currencyCode ||
+    DEFAULT_CURRENCY;
   return {
     id: e._id,
     productId,
@@ -60,7 +95,8 @@ function enrollmentToPurchaseItem(e: EnrollmentResponse): PurchaseItem {
       PLACEHOLDER_IMAGE,
     author: COMPANY_INFO.name,
     status,
-    quantity: Math.max(1, lineItem?.quantity ?? 1),
+    cost: lineTotal,
+    currencyCode,
     productUrl,
   };
 }
@@ -73,12 +109,17 @@ function mergePurchasesByProduct(items: PurchaseItem[]): PurchaseItem[] {
       merged.set(item.productId, { ...item });
       continue;
     }
-    existing.quantity += item.quantity;
+    existing.cost += item.cost;
     if (existing.status !== 'In progress' && item.status === 'In progress') {
       existing.status = 'In progress';
     }
   }
   return Array.from(merged.values());
+}
+
+function normalizeCurrency(value?: string | null): string {
+  const trimmed = typeof value === 'string' ? value.trim().toUpperCase() : '';
+  return trimmed || DEFAULT_CURRENCY;
 }
 
 interface MyPurchasesCardProps {
@@ -93,6 +134,7 @@ export function MyPurchasesCard({
   const [purchases, setPurchases] = useState<PurchaseItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userCurrency, setUserCurrency] = useState(DEFAULT_CURRENCY);
 
   useEffect(() => {
     if (purchasesProp != null) {
@@ -113,16 +155,28 @@ export function MyPurchasesCard({
     setError(null);
     api.orders
       .list()
-      .then((data) => {
-        if (!cancelled) {
-          setPurchases(mergePurchasesByProduct((data || []).map(enrollmentToPurchaseItem)));
-          setError(null);
-        }
+      .then(async (data) => {
+        if (cancelled) return;
+        const me = await api.auth.me().catch(() => null);
+        if (cancelled) return;
+        const fallbackCurrency = normalizeCurrency(me?.currency);
+        setUserCurrency(fallbackCurrency);
+        setPurchases(
+          mergePurchasesByProduct((data || []).map((enrollment) => {
+            const purchase = enrollmentToPurchaseItem(enrollment);
+            return {
+              ...purchase,
+              currencyCode: normalizeCurrency(purchase.currencyCode || fallbackCurrency),
+            };
+          }))
+        );
+        setError(null);
       })
       .catch((err) => {
         if (!cancelled) {
           setError(err?.message ?? 'Failed to load purchases');
           setPurchases([]);
+          setUserCurrency(DEFAULT_CURRENCY);
         }
       })
       .finally(() => {
@@ -197,9 +251,7 @@ export function MyPurchasesCard({
                     Course Name
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">Status</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">
-                    Quantity
-                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">Cost</th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">Author</th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">
                     Course Detail
@@ -228,7 +280,9 @@ export function MyPurchasesCard({
                         {item.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-[#00263d]">{item.quantity}</td>
+                    <td className="px-6 py-4 text-sm text-[#00263d]">
+                      {formatMoney(item.cost, item.currencyCode || userCurrency)}
+                    </td>
                     <td className="px-6 py-4 text-sm text-[#00263d]">{item.author}</td>
                     <td className="px-6 py-4">
                       {item.productUrl?.startsWith('http') ? (

@@ -115,6 +115,7 @@ export const api = {
         firstName?: string;
         lastName?: string;
         phone?: string;
+        currency?: string;
         shopifyCustomerId?: string;
         shopifyShopDomain?: string | null;
         shopifyShopId?: string | null;
@@ -163,11 +164,51 @@ export interface EnrollmentResponse {
     id?: string;
     name?: string;
     createdAt?: string;
+    currentTotalPriceSet?: {
+      shopMoney?: {
+        amount?: string;
+        currencyCode?: string;
+      };
+      presentmentMoney?: {
+        amount?: string;
+        currencyCode?: string;
+      };
+    };
     lineItems?: {
       edges?: Array<{
         node?: {
           title?: string;
           quantity?: number;
+          originalUnitPriceSet?: {
+            shopMoney?: {
+              amount?: string;
+              currencyCode?: string;
+            };
+            presentmentMoney?: {
+              amount?: string;
+              currencyCode?: string;
+            };
+          };
+          originalTotalSet?: {
+            shopMoney?: {
+              amount?: string;
+              currencyCode?: string;
+            };
+            presentmentMoney?: {
+              amount?: string;
+              currencyCode?: string;
+            };
+          };
+          discountedTotalSet?: {
+            shopMoney?: {
+              amount?: string;
+              currencyCode?: string;
+            };
+            presentmentMoney?: {
+              amount?: string;
+              currencyCode?: string;
+            };
+          };
           variant?: {
             id?: string;
             product?: {
@@ -196,11 +237,51 @@ export interface ShopifyOrderResponse extends EnrollmentResponse {
     id?: string;
     name?: string;
     createdAt?: string;
+    currentTotalPriceSet?: {
+      shopMoney?: {
+        amount?: string;
+        currencyCode?: string;
+      };
+      presentmentMoney?: {
+        amount?: string;
+        currencyCode?: string;
+      };
+    };
     lineItems?: {
       edges?: Array<{
         node?: {
           title?: string;
           quantity?: number;
+          originalUnitPriceSet?: {
+            shopMoney?: {
+              amount?: string;
+              currencyCode?: string;
+            };
+            presentmentMoney?: {
+              amount?: string;
+              currencyCode?: string;
+            };
+          };
+          originalTotalSet?: {
+            shopMoney?: {
+              amount?: string;
+              currencyCode?: string;
+            };
+            presentmentMoney?: {
+              amount?: string;
+              currencyCode?: string;
+            };
+          };
+          discountedTotalSet?: {
+            shopMoney?: {
+              amount?: string;
+              currencyCode?: string;
+            };
+            presentmentMoney?: {
+              amount?: string;
+              currencyCode?: string;
+            };
+          };
           variant?: {
             id?: string;
             product?: {
