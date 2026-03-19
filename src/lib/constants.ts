@@ -40,20 +40,6 @@ export const COMPANY_INFO = {
   marketplaceProductUrl: (handle: string) =>
     `https://marketplace.vectra-intl.com/products/${handle}`,
   websiteUrl: 'https://vectra-intl.com',
-  /** Shopify customer account URLs (shop ID 77453132000 = mock for now; replace with real shop ID when ready) */
-  get shopifyAccountShopId() {
-    return typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SHOPIFY_ACCOUNT_SHOP_ID
-      ? process.env.NEXT_PUBLIC_SHOPIFY_ACCOUNT_SHOP_ID
-      : '77453132000';
-  },
-  /** My Profile: redirects to Shopify account profile */
-  get shopifyAccountProfileUrl() {
-    return `https://shopify.com/${this.shopifyAccountShopId}/account/profile`;
-  },
-  /** My Orders: redirects to Shopify account orders */
-  get shopifyAccountOrdersUrl() {
-    return `https://shopify.com/${this.shopifyAccountShopId}/account/orders`;
-  },
 } as const;
 
 export const FOOTER_LINKS: FooterLinkGroup[] = [
