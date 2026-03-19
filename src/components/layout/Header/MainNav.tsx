@@ -45,8 +45,6 @@ export function MainNav() {
   const [hasToken, setHasToken] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [shopifyShopId, setShopifyShopId] = useState<string | null>(null);
-  const [shopifyShopDomain, setShopifyShopDomain] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -67,15 +65,11 @@ export function MainNav() {
         if (cancelled) return;
         setUserName(u?.name ?? null);
         setUserEmail(u?.email ?? null);
-        setShopifyShopId(u?.shopifyShopId ?? null);
-        setShopifyShopDomain(u?.shopifyShopDomain ?? null);
       })
       .catch(() => {
         if (cancelled) return;
         setUserName(null);
         setUserEmail(null);
-        setShopifyShopId(null);
-        setShopifyShopDomain(null);
       });
 
     return () => {
@@ -83,20 +77,30 @@ export function MainNav() {
     };
   }, [hasToken]);
 
-  // Build Shopify links using the logged-in user's Shopify store info (dynamic per customer/store).
-  const myProfileHref =
-    shopifyShopId
-      ? `https://shopify.com/${shopifyShopId}/account/profile`
-      : shopifyShopDomain
-        ? `https://${shopifyShopDomain}/account/profile`
-        : '/profile-settings';
+  async function redirectToShopifyAccount(destination: 'profile' | 'orders') {
+    // Always resolve Shopify destination at click-time.
+    // This avoids redirecting to internal fallback pages while `api.auth.me()` is still loading.
+    try {
+      const u = await api.auth.me();
+      const shopifyShopIdResolved = u?.shopifyShopId ?? null;
+      const shopifyShopDomainResolved = u?.shopifyShopDomain ?? null;
 
-  const myOrdersHref =
-    shopifyShopId
-      ? `https://shopify.com/${shopifyShopId}/account/orders`
-      : shopifyShopDomain
-        ? `https://${shopifyShopDomain}/account/orders`
-        : '/purchases';
+      if (shopifyShopIdResolved) {
+        window.location.href = `https://shopify.com/${shopifyShopIdResolved}/account/${destination}`;
+        return;
+      }
+      if (shopifyShopDomainResolved) {
+        window.location.href = `https://${shopifyShopDomainResolved}/account/${destination}`;
+        return;
+      }
+
+      // Last resort fallbacks.
+      window.location.href = destination === 'profile' ? '/profile-settings' : '/purchases';
+    } catch {
+      // If the token is invalid/expired, the user will typically be redirected by other flows.
+      window.location.href = '/';
+    }
+  }
 
   useEffect(() => {
     if (mobileMenuOpen) {
@@ -219,41 +223,80 @@ export function MainNav() {
                 </div>
                 <div className="border-t border-gray-200" />
                 <div className="py-1">
-                  <a
-                    href={myProfileHref}
-                    className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100"
-                    role="menuitem"
-                    onClick={() => setUserMenuOpen(false)}
-                    {...(myProfileHref.startsWith('http') && {
-                      target: '_blank',
-                      rel: 'noopener noreferrer',
-                    })}
-                  >
-                    My Profile
-                  </a>
-                  <a
-                    href={myOrdersHref}
-                    className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100"
-                    role="menuitem"
-                    onClick={() => setUserMenuOpen(false)}
-                    {...(myOrdersHref.startsWith('http') && {
-                      target: '_blank',
-                      rel: 'noopener noreferrer',
-                    })}
-                  >
-                    My Orders
-                  </a>
                   <button
                     type="button"
                     className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100"
                     role="menuitem"
                     onClick={() => {
                       setUserMenuOpen(false);
-                      setStoredToken(null);
-                      setHasToken(false);
-                      setUserName(null);
-                      setUserEmail(null);
-                      router.replace('/');
+                      redirectToShopifyAccount('profile');
+                    }}
+                  >
+                    My Profile
+                  </button>
+                  <button
+                    type="button"
+                    className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100"
+                    role="menuitem"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      redirectToShopifyAccount('orders');
+                    }}
+                  >
+                    My Orders
+                  </button>
+                  <button
+                    type="button"
+                    className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100"
+                    role="menuitem"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+
+                      // Redirect to Shopify logout so the customer session is cleared too.
+                      // Then we return to the marketplace homepage.
+                      (async () => {
+                        try {
+                          const u = await api.auth.me();
+                          const shopifyShopIdResolved = u?.shopifyShopId ?? null;
+                          const shopifyShopDomainResolved = u?.shopifyShopDomain ?? null;
+
+                          const currentUrl = new URL(window.location.href);
+                          const country = currentUrl.searchParams.get('country');
+                          const base = COMPANY_INFO.marketplaceUrl.replace(/\/$/, '');
+                          const returnUrl = country ? `${base}/?country=${encodeURIComponent(country)}` : base;
+
+                          const logoutUrl =
+                            shopifyShopIdResolved
+                              ? `https://shopify.com/${shopifyShopIdResolved}/account/logout?return_url=${encodeURIComponent(
+                                  returnUrl
+                                )}`
+                              : shopifyShopDomainResolved
+                                ? `https://${shopifyShopDomainResolved}/account/logout?return_url=${encodeURIComponent(
+                                    returnUrl
+                                  )}`
+                                : null;
+
+                          // Clear local LMS session immediately.
+                          setStoredToken(null);
+                          setHasToken(false);
+                          setUserName(null);
+                          setUserEmail(null);
+
+                          if (logoutUrl) {
+                            window.location.href = logoutUrl;
+                            return;
+                          }
+
+                          router.replace('/');
+                        } catch {
+                          // If the user/session can't be resolved, just do a local logout.
+                          setStoredToken(null);
+                          setHasToken(false);
+                          setUserName(null);
+                          setUserEmail(null);
+                          router.replace('/');
+                        }
+                      })();
                     }}
                   >
                     Sign out
