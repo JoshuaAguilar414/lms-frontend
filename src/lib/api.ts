@@ -26,7 +26,17 @@ async function request<T>(
   options: RequestInit & { token?: string | null } = {}
 ): Promise<T> {
   const { token = getStoredToken(), ...init } = options;
-  const url = `${getBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`;
+  const baseUrl = getBaseUrl();
+  const rawPath = path.startsWith('/') ? path : `/${path}`;
+  // Allow NEXT_PUBLIC_API_URL to be either:
+  // - "https://example.com" (preferred)
+  // - "https://example.com/api" (common in reverse-proxy deployments)
+  // while still using request paths like "/api/..."
+  const effectivePath =
+    baseUrl.endsWith('/api') && rawPath.startsWith('/api/')
+      ? rawPath.slice('/api'.length)
+      : rawPath;
+  const url = `${baseUrl}${effectivePath}`;
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...(init.headers as Record<string, string>),
