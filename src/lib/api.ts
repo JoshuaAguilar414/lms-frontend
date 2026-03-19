@@ -113,6 +113,13 @@ export const api = {
   enrollments: {
     list: () => request<EnrollmentResponse[]>('/api/enrollments', { token: getStoredToken() }),
   },
+  orders: {
+    /**
+     * Shopify order history mapped to LMS courses.
+     * Returned in an `EnrollmentResponse`-shaped format so existing UI can render.
+     */
+    list: () => request<EnrollmentResponse[]>('/api/orders', { token: getStoredToken() }),
+  },
   courses: {
     /** List courses (synced from Shopify products). No auth required. */
     list: () => request<CourseResponse[]>('/api/courses'),

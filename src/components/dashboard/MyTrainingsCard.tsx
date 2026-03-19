@@ -59,7 +59,7 @@ export function MyTrainingsCard({ trainings: trainingsProp = null }: MyTrainings
     let cancelled = false;
     setLoading(true);
     setError(null);
-    api.enrollments
+    api.orders
       .list()
       .then((data) => {
         if (!cancelled) {

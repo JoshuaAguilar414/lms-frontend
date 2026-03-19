@@ -74,7 +74,7 @@ export function MyPurchasesCard({
     let cancelled = false;
     setLoading(true);
     setError(null);
-    api.enrollments
+    api.orders
       .list()
       .then((data) => {
         if (!cancelled) {
