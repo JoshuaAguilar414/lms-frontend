@@ -141,8 +141,13 @@ export interface EnrollmentResponse {
   userId: { _id: string; name?: string; email?: string };
   courseId: {
     _id: string;
+    shopifyProductId?: string;
     title: string;
+    productType?: string;
+    description?: string;
+    tags?: string[];
     thumbnail?: string;
+    image?: string;
     handle?: string;
     scormUrl?: string;
     admissionId?: string;
@@ -150,6 +155,11 @@ export interface EnrollmentResponse {
   };
   shopifyOrderId: string;
   shopifyOrderNumber?: string;
+  shopifyProductId?: string;
+  shopifyProductType?: string;
+  shopifyProductDescription?: string;
+  shopifyProductTags?: string[];
+  shopifyProductImage?: string;
   status: string;
   enrolledAt: string;
   progress?: { progress: number; completed: boolean } | null;
@@ -157,9 +167,13 @@ export interface EnrollmentResponse {
 
 export interface CourseResponse {
   _id: string;
+  shopifyProductId?: string;
   title: string;
+  productType?: string;
   description?: string;
+  tags?: string[];
   thumbnail?: string;
+  image?: string;
   handle?: string;
   scormUrl?: string;
   admissionId?: string;
