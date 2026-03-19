@@ -106,6 +106,8 @@ export const api = {
         lastName?: string;
         phone?: string;
         shopifyCustomerId?: string;
+        shopifyShopDomain?: string | null;
+        shopifyShopId?: string | null;
       }>('/api/auth/me', { token: getStoredToken() }),
   },
   enrollments: {

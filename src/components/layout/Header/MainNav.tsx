@@ -45,6 +45,8 @@ export function MainNav() {
   const [hasToken, setHasToken] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [shopifyShopId, setShopifyShopId] = useState<string | null>(null);
+  const [shopifyShopDomain, setShopifyShopDomain] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -65,17 +67,36 @@ export function MainNav() {
         if (cancelled) return;
         setUserName(u?.name ?? null);
         setUserEmail(u?.email ?? null);
+        setShopifyShopId(u?.shopifyShopId ?? null);
+        setShopifyShopDomain(u?.shopifyShopDomain ?? null);
       })
       .catch(() => {
         if (cancelled) return;
         setUserName(null);
         setUserEmail(null);
+        setShopifyShopId(null);
+        setShopifyShopDomain(null);
       });
 
     return () => {
       cancelled = true;
     };
   }, [hasToken]);
+
+  // Build Shopify links using the logged-in user's Shopify store info (dynamic per customer/store).
+  const myProfileHref =
+    shopifyShopId
+      ? `https://shopify.com/${shopifyShopId}/account/profile`
+      : shopifyShopDomain
+        ? `https://${shopifyShopDomain}/account/profile`
+        : '/profile-settings';
+
+  const myOrdersHref =
+    shopifyShopId
+      ? `https://shopify.com/${shopifyShopId}/account/orders`
+      : shopifyShopDomain
+        ? `https://${shopifyShopDomain}/account/orders`
+        : '/purchases';
 
   useEffect(() => {
     if (mobileMenuOpen) {
@@ -199,18 +220,26 @@ export function MainNav() {
                 <div className="border-t border-gray-200" />
                 <div className="py-1">
                   <a
-                    href="/profile-settings"
+                    href={myProfileHref}
                     className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100"
                     role="menuitem"
                     onClick={() => setUserMenuOpen(false)}
+                    {...(myProfileHref.startsWith('http') && {
+                      target: '_blank',
+                      rel: 'noopener noreferrer',
+                    })}
                   >
                     My Profile
                   </a>
                   <a
-                    href="/purchases"
+                    href={myOrdersHref}
                     className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100"
                     role="menuitem"
                     onClick={() => setUserMenuOpen(false)}
+                    {...(myOrdersHref.startsWith('http') && {
+                      target: '_blank',
+                      rel: 'noopener noreferrer',
+                    })}
                   >
                     My Orders
                   </a>
