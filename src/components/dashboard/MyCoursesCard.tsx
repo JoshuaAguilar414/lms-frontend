@@ -9,13 +9,13 @@ import {
   ShoppingCartIcon,
 } from '@/components/icons';
 import { COMPANY_INFO } from '@/lib/constants';
-import { api, getStoredToken, type EnrollmentResponse } from '@/lib/api';
+import { api, getStoredToken, type ShopifyOrderResponse } from '@/lib/api';
 
 export interface OrderItem {
   id: string;
   orderId: string;
   title: string;
-  progress: string;
+  courseType: string;
   date: string;
   /** Shopify account order URL (opens in new tab for View Details) */
   orderUrl?: string;
@@ -23,10 +23,19 @@ export interface OrderItem {
 
 const ITEMS_PER_PAGE = 10;
 
-function formatOrderId(enrollment: EnrollmentResponse): string {
-  return enrollment.shopifyOrderNumber
-    ? `#${enrollment.shopifyOrderNumber}`
-    : `#${enrollment.shopifyOrderId}`;
+function extractNumericId(input?: string | null): string | null {
+  const raw = String(input ?? '');
+  if (!raw) return null;
+  const gidMatch = raw.match(/gid:\/\/shopify\/\w+\/(\d+)/i);
+  if (gidMatch?.[1]) return gidMatch[1];
+  const digits = raw.match(/^(\d+)$/);
+  return digits?.[1] ?? null;
+}
+
+function formatOrderId(order: ShopifyOrderResponse): string {
+  const shopifyName = order.orderData?.name;
+  if (shopifyName) return shopifyName.startsWith('#') ? shopifyName : `#${shopifyName}`;
+  return order.shopifyOrderNumber ? `#${order.shopifyOrderNumber}` : `#${order.shopifyOrderId}`;
 }
 
 function formatDate(iso: string): string {
@@ -38,20 +47,24 @@ function formatDate(iso: string): string {
   }
 }
 
-function enrollmentToOrderItem(e: EnrollmentResponse): OrderItem {
-  const progress = e.progress;
-  const progressLabel = progress?.completed
-    ? 'Complete'
-    : progress?.progress != null
-      ? `${Math.round(progress.progress)}%`
-      : 'In progress';
+function shopifyOrderToOrderItem(order: ShopifyOrderResponse, shopId?: string | null): OrderItem {
+  const lineItem = order.orderData?.lineItems?.edges?.[0]?.node;
+  const product = lineItem?.variant?.product;
+  const courseType =
+    product?.productType ??
+    order.shopifyProductType ??
+    order.courseId?.productType ??
+    'Learning';
+  const orderIdForUrl =
+    extractNumericId(order.orderData?.id) ?? extractNumericId(order.shopifyOrderId) ?? order.shopifyOrderId;
+  const orderDate = order.orderData?.createdAt ?? order.enrolledAt;
   return {
-    id: e._id,
-    orderId: formatOrderId(e),
-    title: e.courseId?.title ?? 'Course',
-    progress: progressLabel,
-    date: formatDate(e.enrolledAt),
-    orderUrl: COMPANY_INFO.marketplaceOrderUrl(e.shopifyOrderId),
+    id: order._id,
+    orderId: formatOrderId(order),
+    title: lineItem?.title ?? product?.title ?? order.courseId?.title ?? 'Course',
+    courseType,
+    date: formatDate(orderDate),
+    orderUrl: COMPANY_INFO.marketplaceOrderUrl(orderIdForUrl, shopId),
   };
 }
 
@@ -88,9 +101,11 @@ export function MyCoursesCard({
     setError(null);
     api.orders
       .list()
-      .then((data) => {
+      .then(async (data) => {
+        const me = await api.auth.me().catch(() => null);
+        const shopId = me?.shopifyShopId ?? null;
         if (!cancelled) {
-          setOrders((data || []).map(enrollmentToOrderItem));
+          setOrders((data || []).map((item) => shopifyOrderToOrderItem(item, shopId)));
           setError(null);
         }
       })
@@ -195,7 +210,7 @@ export function MyCoursesCard({
                     <td className="px-6 py-4">
                       <span className="text-sm text-gray-800">{item.title}</span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-800">{item.progress}</td>
+                    <td className="px-6 py-4 text-sm text-gray-800">{item.courseType}</td>
                     <td className="px-6 py-4 text-sm text-gray-800">{item.date}</td>
                     <td className="px-6 py-4 text-right">
                       <a

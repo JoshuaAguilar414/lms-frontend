@@ -33,9 +33,11 @@ export const COMPANY_INFO = {
   get lmsAuthLoginUrl() {
     return `${getLmsBaseUrl()}/auth/login`;
   },
-  /** Customer account order detail URL pattern (use with order ID) */
-  marketplaceOrderUrl: (orderId: string) =>
-    `https://marketplace.vectra-intl.com/account/orders/${orderId}`,
+  /** Shopify account order detail URL pattern (use with shop ID and order ID) */
+  marketplaceOrderUrl: (orderId: string, shopId?: string | null) =>
+    shopId
+      ? `https://shopify.com/${shopId}/account/orders/${orderId}`
+      : `https://marketplace.vectra-intl.com/account/orders/${orderId}`,
   /** Product page on marketplace (use Shopify product handle) */
   marketplaceProductUrl: (handle: string) =>
     `https://marketplace.vectra-intl.com/products/${handle}`,

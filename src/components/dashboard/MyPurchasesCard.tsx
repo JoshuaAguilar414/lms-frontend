@@ -15,10 +15,12 @@ import { api, getStoredToken, type EnrollmentResponse } from '@/lib/api';
 
 export interface PurchaseItem {
   id: string;
+  productId: string;
   title: string;
   thumbnail: string;
   author: string;
   status: string;
+  quantity: number;
   /** Course or product detail URL */
   productUrl?: string;
 }
@@ -29,19 +31,54 @@ const ITEMS_PER_PAGE = 10;
 
 function enrollmentToPurchaseItem(e: EnrollmentResponse): PurchaseItem {
   const course = e.courseId;
+  const lineItem = e.orderData?.lineItems?.edges?.[0]?.node;
+  const product = lineItem?.variant?.product;
   const progress = e.progress;
   const status = progress?.completed ? 'Complete' : 'In progress';
-  const productUrl = course?.handle
-    ? COMPANY_INFO.marketplaceProductUrl(course.handle)
-    : `/courses/${course?._id ?? e._id}`;
+  const title = course?.title ?? lineItem?.title ?? product?.title ?? 'Course';
+  const productId =
+    e.shopifyProductId ??
+    course?.shopifyProductId ??
+    product?.id?.split('/').pop() ??
+    e._id;
+  const slug = title
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+  const productUrl = `${COMPANY_INFO.marketplaceUrl}/products/${encodeURIComponent(slug || title)}`;
   return {
     id: e._id,
-    title: course?.title ?? 'Course',
-    thumbnail: course?.thumbnail ?? PLACEHOLDER_IMAGE,
+    productId,
+    title,
+    thumbnail:
+      e.shopifyProductImage ??
+      product?.featuredImage?.url ??
+      course?.thumbnail ??
+      course?.image ??
+      PLACEHOLDER_IMAGE,
     author: COMPANY_INFO.name,
     status,
+    quantity: Math.max(1, lineItem?.quantity ?? 1),
     productUrl,
   };
+}
+
+function mergePurchasesByProduct(items: PurchaseItem[]): PurchaseItem[] {
+  const merged = new Map<string, PurchaseItem>();
+  for (const item of items) {
+    const existing = merged.get(item.productId);
+    if (!existing) {
+      merged.set(item.productId, { ...item });
+      continue;
+    }
+    existing.quantity += item.quantity;
+    if (existing.status !== 'In progress' && item.status === 'In progress') {
+      existing.status = 'In progress';
+    }
+  }
+  return Array.from(merged.values());
 }
 
 interface MyPurchasesCardProps {
@@ -78,7 +115,7 @@ export function MyPurchasesCard({
       .list()
       .then((data) => {
         if (!cancelled) {
-          setPurchases((data || []).map(enrollmentToPurchaseItem));
+          setPurchases(mergePurchasesByProduct((data || []).map(enrollmentToPurchaseItem)));
           setError(null);
         }
       })
@@ -160,6 +197,9 @@ export function MyPurchasesCard({
                     Course Name
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">Status</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">
+                    Quantity
+                  </th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">Author</th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">
                     Course Detail
@@ -188,6 +228,7 @@ export function MyPurchasesCard({
                         {item.status}
                       </span>
                     </td>
+                    <td className="px-6 py-4 text-sm text-[#00263d]">{item.quantity}</td>
                     <td className="px-6 py-4 text-sm text-[#00263d]">{item.author}</td>
                     <td className="px-6 py-4">
                       {item.productUrl?.startsWith('http') ? (

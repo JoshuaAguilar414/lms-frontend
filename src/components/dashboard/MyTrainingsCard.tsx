@@ -13,6 +13,8 @@ const PLACEHOLDER_IMAGE =
 
 function enrollmentToTrainingItem(e: EnrollmentResponse): TrainingItemType {
   const course = e.courseId;
+  const lineItem = e.orderData?.lineItems?.edges?.[0]?.node;
+  const product = lineItem?.variant?.product;
   const total = Math.max(1, course?.totalLessons ?? 1);
   const pct = e.progress?.progress ?? 0;
   const current = Math.min(total, Math.round((pct / 100) * total));
@@ -24,9 +26,14 @@ function enrollmentToTrainingItem(e: EnrollmentResponse): TrainingItemType {
 
   return {
     id: course?._id ?? e._id,
-    title: course?.title ?? 'Course',
+    title: course?.title ?? lineItem?.title ?? product?.title ?? 'Course',
     progress: progressStr,
-    thumbnail: course?.thumbnail ?? PLACEHOLDER_IMAGE,
+    thumbnail:
+      e.shopifyProductImage ??
+      product?.featuredImage?.url ??
+      course?.thumbnail ??
+      course?.image ??
+      PLACEHOLDER_IMAGE,
     action,
     scormUrl: course?.scormUrl,
     admissionId: course?.admissionId,

@@ -125,10 +125,9 @@ export const api = {
   },
   orders: {
     /**
-     * Shopify order history mapped to LMS courses.
-     * Returned in an `EnrollmentResponse`-shaped format so existing UI can render.
+     * Shopify order history with `orderData` snapshot from Shopify Orders schema.
      */
-    list: () => request<EnrollmentResponse[]>('/api/orders', { token: getStoredToken() }),
+    list: () => request<ShopifyOrderResponse[]>('/api/orders', { token: getStoredToken() }),
   },
   courses: {
     /** List courses (synced from Shopify products). No auth required. */
@@ -160,9 +159,66 @@ export interface EnrollmentResponse {
   shopifyProductDescription?: string;
   shopifyProductTags?: string[];
   shopifyProductImage?: string;
+  orderData?: {
+    id?: string;
+    name?: string;
+    createdAt?: string;
+    lineItems?: {
+      edges?: Array<{
+        node?: {
+          title?: string;
+          quantity?: number;
+          variant?: {
+            id?: string;
+            product?: {
+              id?: string;
+              title?: string;
+              productType?: string;
+              description?: string;
+              tags?: string[];
+              featuredImage?: {
+                url?: string;
+                altText?: string | null;
+              };
+            };
+          };
+        };
+      }>;
+    };
+  };
   status: string;
   enrolledAt: string;
   progress?: { progress: number; completed: boolean } | null;
+}
+
+export interface ShopifyOrderResponse extends EnrollmentResponse {
+  orderData?: {
+    id?: string;
+    name?: string;
+    createdAt?: string;
+    lineItems?: {
+      edges?: Array<{
+        node?: {
+          title?: string;
+          quantity?: number;
+          variant?: {
+            id?: string;
+            product?: {
+              id?: string;
+              title?: string;
+              productType?: string;
+              description?: string;
+              tags?: string[];
+              featuredImage?: {
+                url?: string;
+                altText?: string | null;
+              };
+            };
+          };
+        };
+      }>;
+    };
+  };
 }
 
 export interface CourseResponse {
