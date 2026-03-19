@@ -57,7 +57,7 @@ function AuthLoginContent() {
     if (isLmsTokenPayload(payload)) {
       setStoredToken(jwtToken);
       setStatus('success');
-      window.location.href = '/purchases';
+      window.location.href = '/';
       return;
     }
 
@@ -68,7 +68,7 @@ function AuthLoginContent() {
         if (cancelled) return;
         setStoredToken(res.token);
         setStatus('success');
-        window.location.href = '/purchases';
+        window.location.href = '/';
       })
       .catch((err: Error & { body?: { error?: string } }) => {
         if (cancelled) return;

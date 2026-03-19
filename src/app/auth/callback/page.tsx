@@ -26,7 +26,7 @@ export default function AuthCallbackPage() {
     if (lmsToken) {
       setStoredToken(lmsToken);
       setStatus('success');
-      window.location.href = '/purchases';
+      window.location.href = '/';
       return;
     }
 
@@ -44,7 +44,7 @@ export default function AuthCallbackPage() {
         if (cancelled) return;
         setStoredToken(res.token);
         setStatus('success');
-        window.location.href = '/purchases';
+        window.location.href = '/';
       })
       .catch((err: Error & { body?: { error?: string } }) => {
         if (cancelled) return;
@@ -70,7 +70,7 @@ export default function AuthCallbackPage() {
       <div className="mx-auto max-w-md px-4 py-16 text-center">
         <p className="mb-4 text-red-600">{errorMessage}</p>
         <a
-          href="/purchases"
+          href="/"
           className="text-[#54bd01] hover:underline"
         >
           Go to My Courses

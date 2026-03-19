@@ -25,7 +25,7 @@ function enrollmentToTrainingItem(e: EnrollmentResponse): TrainingItemType {
   else if (current > 0) action = 'resume';
 
   return {
-    id: course?._id ?? e._id,
+    id: course?._id ?? e.shopifyProductId ?? e._id,
     title: course?.title ?? lineItem?.title ?? product?.title ?? 'Course',
     progress: progressStr,
     thumbnail:
@@ -38,6 +38,24 @@ function enrollmentToTrainingItem(e: EnrollmentResponse): TrainingItemType {
     scormUrl: course?.scormUrl,
     admissionId: course?.admissionId,
   };
+}
+
+function dedupeTrainingsByCourse(items: TrainingItemType[]): TrainingItemType[] {
+  const deduped = new Map<string, TrainingItemType>();
+  for (const item of items) {
+    if (!deduped.has(item.id)) {
+      deduped.set(item.id, item);
+      continue;
+    }
+    const existing = deduped.get(item.id);
+    if (!existing) continue;
+    const [existingCurrent, existingTotal] = existing.progress.split('/').map((v) => Number(v) || 0);
+    const [nextCurrent, nextTotal] = item.progress.split('/').map((v) => Number(v) || 0);
+    const existingPct = existingTotal > 0 ? existingCurrent / existingTotal : 0;
+    const nextPct = nextTotal > 0 ? nextCurrent / nextTotal : 0;
+    if (nextPct > existingPct) deduped.set(item.id, item);
+  }
+  return Array.from(deduped.values());
 }
 
 interface MyTrainingsCardProps {
@@ -70,7 +88,7 @@ export function MyTrainingsCard({ trainings: trainingsProp = null }: MyTrainings
       .list()
       .then((data) => {
         if (!cancelled) {
-          setTrainings((data || []).map(enrollmentToTrainingItem));
+          setTrainings(dedupeTrainingsByCourse((data || []).map(enrollmentToTrainingItem)));
           setError(null);
         }
       })
@@ -95,11 +113,11 @@ export function MyTrainingsCard({ trainings: trainingsProp = null }: MyTrainings
     <Card className="flex flex-col">
       <div className="mb-6 flex items-center gap-2">
         <BookIcon className="h-5 w-5 text-black" />
-        <h2 className="font-poppins text-xl font-bold text-[#00263d]">My Courses</h2>
+        <h2 className="font-poppins text-xl font-bold text-[#00263d]">My Progresses</h2>
       </div>
 
       {loading && (
-        <div className="py-8 text-center text-gray-500">Loading courses…</div>
+        <div className="py-8 text-center text-gray-500">Loading progresses…</div>
       )}
 
       {error && (
@@ -108,7 +126,7 @@ export function MyTrainingsCard({ trainings: trainingsProp = null }: MyTrainings
 
       {noAuth && !loading && (
         <div className="px-6 py-12 text-center text-gray-600">
-          Sign in via Shopify to see your courses.
+          Sign in via Shopify to see your progresses.
           <br />
           <a
             href={COMPANY_INFO.marketplaceUrl}
@@ -120,7 +138,7 @@ export function MyTrainingsCard({ trainings: trainingsProp = null }: MyTrainings
       )}
 
       {!loading && !error && empty && !noAuth && (
-        <div className="py-8 text-center text-gray-500">No courses yet.</div>
+        <div className="py-8 text-center text-gray-500">No progresses yet.</div>
       )}
 
       {!loading && !error && trainings.length > 0 && (
