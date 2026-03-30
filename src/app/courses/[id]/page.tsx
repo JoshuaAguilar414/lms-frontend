@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { AuthGuard } from '@/components/auth';
 import { Card } from '@/components/ui';
-import { ScormEmbed } from '@/components/embed/ScormEmbed';
+import { CourseScormPlayer } from '@/components/embed/CourseScormPlayer';
 import { RelatedCoursesSlider } from '@/components/courses/RelatedCoursesSlider';
 import type { RelatedCourse } from '@/types';
 
@@ -12,11 +12,30 @@ function marketplaceProductUrl(handle: string): string {
   return `${MARKETPLACE_BASE}/products/${handle}`;
 }
 
+/** Use /uploads/... on the Next host so rewrites proxy to the API (same-origin iframe + asset URLs). */
+function scormSrcForApp(scormUrl: string): string {
+  if (!/^https?:\/\//i.test(scormUrl)) return scormUrl;
+  try {
+    const u = new URL(scormUrl);
+    if (!u.pathname.startsWith('/uploads/')) return scormUrl;
+    const api = new URL(API_BASE.replace(/\/$/, '') + '/');
+    const samePort = u.port === api.port || (!u.port && !api.port);
+    const local = ['localhost', '127.0.0.1'];
+    const sameBackend =
+      u.origin === api.origin ||
+      (local.includes(u.hostname) && local.includes(api.hostname) && samePort);
+    if (sameBackend) return `${u.pathname}${u.search}${u.hash}`;
+  } catch {
+    /* keep as-is */
+  }
+  return scormUrl;
+}
+
 function buildScormUrl(course: {
   scormUrl?: string | null;
   admissionId?: string | null;
 }): string | undefined {
-  if (course.scormUrl) return course.scormUrl;
+  if (course.scormUrl) return scormSrcForApp(course.scormUrl);
   if (course.admissionId) return `/scorm-player?admissionId=${course.admissionId}`;
   return (
     process.env.NEXT_PUBLIC_SCORM_SAMPLE_URL ||
@@ -26,6 +45,7 @@ function buildScormUrl(course: {
 
 interface ApiCourse {
   _id: string;
+  shopifyProductId?: string;
   title: string;
   description?: string;
   thumbnail?: string;
@@ -59,6 +79,11 @@ async function fetchCourses(): Promise<ApiCourse[]> {
   }
 }
 
+function coursePagePath(c: ApiCourse): string {
+  const segment = c.shopifyProductId?.trim() || c._id;
+  return `/courses/${encodeURIComponent(segment)}`;
+}
+
 function toRelatedCourse(c: ApiCourse): RelatedCourse {
   return {
     id: c._id,
@@ -67,7 +92,7 @@ function toRelatedCourse(c: ApiCourse): RelatedCourse {
     thumbnail: c.thumbnail ?? 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=250&fit=crop',
     tag: 'Course',
     price: '',
-    href: c.handle ? marketplaceProductUrl(c.handle) : `/courses/${c._id}`,
+    href: c.handle ? marketplaceProductUrl(c.handle) : coursePagePath(c),
   };
 }
 
@@ -88,41 +113,37 @@ export default async function CourseProgressPage({ params }: PageProps) {
   const scormUrl = buildScormUrl(course);
 
   const relatedCourses: RelatedCourse[] = allCourses
-    .filter((c) => c._id !== id)
+    .filter((c) => c._id !== id && c.shopifyProductId !== id)
     .slice(0, 8)
     .map(toRelatedCourse);
 
   return (
     <AuthGuard>
-    <div className="bg-gray-100">
-      <div className="mx-auto max-w-screen-2xl px-4 py-3 sm:px-6 lg:px-8">
-        {scormUrl ? (
-          <Card className="mt-4 p-0 overflow-hidden">
-            <ScormEmbed
-              src={scormUrl}
-              title={course.title}
-              minHeight={900}
-            />
+      <div className="bg-gray-100">
+        <div className="mx-auto max-w-screen-2xl px-4 py-3 sm:px-6 lg:px-8">
+          {scormUrl ? (
+            <Card className="mt-4 p-0 overflow-hidden">
+              <CourseScormPlayer src={scormUrl} title={course.title} minHeight={900} />
+            </Card>
+          ) : (
+            <Card className="mt-8">
+              <h2 className="mb-4 text-lg font-semibold text-gray-900">Course content</h2>
+              <div className="flex min-h-[320px] items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 text-gray-500">
+                <p className="text-center text-sm">
+                  No SCORM package URL configured for this course.
+                  <br />
+                  Set <code className="rounded bg-gray-200 px-1">scormUrl</code> or{' '}
+                  <code className="rounded bg-gray-200 px-1">admissionId</code> on the course, or{' '}
+                  <code className="rounded bg-gray-200 px-1">NEXT_PUBLIC_SCORM_SAMPLE_URL</code> in .env.
+                </p>
+              </div>
+            </Card>
+          )}
+          <Card className="mt-4 mb-4 pb-8">
+            <RelatedCoursesSlider courses={relatedCourses} />
           </Card>
-        ) : (
-          <Card className="mt-8">
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">Course content</h2>
-            <div className="flex min-h-[320px] items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 text-gray-500">
-              <p className="text-center text-sm">
-                No SCORM package URL configured for this course.
-                <br />
-                Set <code className="rounded bg-gray-200 px-1">scormUrl</code> or{' '}
-                <code className="rounded bg-gray-200 px-1">admissionId</code> on the course, or{' '}
-                <code className="rounded bg-gray-200 px-1">NEXT_PUBLIC_SCORM_SAMPLE_URL</code> in .env.
-              </p>
-            </div>
-          </Card>
-        )}
-        <Card className="mt-4 mb-4 pb-8">
-          <RelatedCoursesSlider courses={relatedCourses} />
-        </Card>
+        </div>
       </div>
-    </div>
     </AuthGuard>
   );
 }

@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import type { ScormLearnerInfo } from './scormLearnerPrefill';
+import { prefillScormLearnerFields } from './scormLearnerPrefill';
 
 /**
  * Embeds a SCORM package via iframe, isolating only the content area.
@@ -20,6 +22,8 @@ interface ScormEmbedProps {
   minHeight?: number;
   /** SCORM version (1.2 or 2004) - defaults to 1.2 */
   version?: '1.2' | '2004';
+  /** When set (same-origin iframe), name/email fields are filled after load. */
+  learner?: ScormLearnerInfo | null;
 }
 
 export function ScormEmbed({
@@ -28,6 +32,7 @@ export function ScormEmbed({
   className = '',
   minHeight = 600,
   version = '1.2',
+  learner = null,
 }: ScormEmbedProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
@@ -46,6 +51,10 @@ export function ScormEmbed({
         const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
         const iframeWindow = iframe.contentWindow;
         
+        if (iframeDoc && iframeWindow && learner) {
+          prefillScormLearnerFields(iframeDoc, learner);
+        }
+
         if (iframeDoc && iframeWindow) {
           // Inject CSS to hide headers/footers
           const styleId = 'scorm-content-only-style';
@@ -151,30 +160,25 @@ export function ScormEmbed({
       }
     };
 
-    const handleLoad = () => {
-      // Wait a bit for content to render
-      setTimeout(() => {
-        hideHeaderFooter();
-      }, 100);
+    const loadTimers: ReturnType<typeof setTimeout>[] = [];
+
+    const scheduleRuns = () => {
+      const delays = learner ? [0, 80, 400, 1200, 2500] : [100, 500];
+      delays.forEach((ms) => {
+        loadTimers.push(setTimeout(() => hideHeaderFooter(), ms));
+      });
     };
 
-    iframe.addEventListener('load', handleLoad);
-    
-    // Also try immediately if already loaded
-    if (iframe.contentDocument?.readyState === 'complete') {
-      handleLoad();
-    }
+    const handleLoad = () => scheduleRuns();
 
-    // Try again after a delay to catch dynamically loaded content
-    const timeoutId = setTimeout(() => {
-      hideHeaderFooter();
-    }, 500);
+    iframe.addEventListener('load', handleLoad);
+    scheduleRuns();
 
     return () => {
       iframe.removeEventListener('load', handleLoad);
-      clearTimeout(timeoutId);
+      loadTimers.forEach(clearTimeout);
     };
-  }, [url]);
+  }, [url, learner]);
 
   return (
     <div className={`overflow-hidden rounded-lg border border-gray-200 bg-gray-50 ${className}`}>

@@ -1,4 +1,5 @@
 export interface TrainingItem {
+  /** Used in `/courses/{id}` — prefer Shopify product id; falls back to Mongo course _id */
   id: string;
   title: string;
   progress: string;

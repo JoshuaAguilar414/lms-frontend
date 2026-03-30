@@ -25,7 +25,7 @@ function enrollmentToTrainingItem(e: EnrollmentResponse): TrainingItemType {
   else if (current > 0) action = 'resume';
 
   return {
-    id: course?._id ?? e.shopifyProductId ?? e._id,
+    id: e.shopifyProductId ?? course?.shopifyProductId ?? course?._id ?? e._id,
     title: course?.title ?? lineItem?.title ?? product?.title ?? 'Course',
     progress: progressStr,
     thumbnail:

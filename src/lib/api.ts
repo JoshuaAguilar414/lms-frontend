@@ -37,8 +37,9 @@ async function request<T>(
       ? rawPath.slice('/api'.length)
       : rawPath;
   const url = `${baseUrl}${effectivePath}`;
+  const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData;
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(init.headers as Record<string, string>),
   };
   if (token) (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
@@ -133,6 +134,32 @@ export const api = {
   courses: {
     /** List courses (synced from Shopify products). No auth required. */
     list: () => request<CourseResponse[]>('/api/courses'),
+  },
+  admin: {
+    /**
+     * Upload SCORM ZIP and map it to a Shopify/LMS product.
+     */
+    uploadScorm: (params: { productId: string; productTitle: string; scormZipFile: File }) => {
+      const formData = new FormData();
+      formData.append('productId', params.productId);
+      formData.append('productTitle', params.productTitle);
+      formData.append('scormFile', params.scormZipFile);
+      return request<{ message?: string; scormUrl?: string; course?: unknown }>(
+        '/api/admin/scorm/upload',
+        { method: 'POST', body: formData, token: getStoredToken() }
+      );
+    },
+    /**
+     * Upload logo image used by the platform/brand.
+     */
+    uploadLogo: (logoFile: File) => {
+      const formData = new FormData();
+      formData.append('logo', logoFile);
+      return request<{ message?: string; logoUrl?: string }>(
+        '/api/admin/logo/upload',
+        { method: 'POST', body: formData, token: getStoredToken() }
+      );
+    },
   },
 };
 

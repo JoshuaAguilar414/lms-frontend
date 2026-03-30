@@ -36,7 +36,14 @@ type NavLink = { label: string; href: string; hasDropdown?: boolean; external?: 
 const allNavLinks: NavLink[] = [
   { label: 'Dashboard', href: '/' },
   { label: 'My Courses', href: '/purchases' },
+  { label: 'Admin', href: '/admin' },
 ];
+
+/** Logged-out users only see external links plus Admin (UI reachable without sign-in). */
+function linksForSession(links: NavLink[], hasToken: boolean) {
+  if (hasToken) return links;
+  return links.filter((l) => l.external || l.href === '/admin');
+}
 
 export function MainNav() {
   const pathname = usePathname();
@@ -144,6 +151,8 @@ export function MainNav() {
     );
   }
 
+  const navLinks = linksForSession(allNavLinks, hasToken);
+
   return (
     <nav className="font-poppins bg-white text-gray-900 border-b border-gray-200">
       <div className="mx-auto flex h-16 items-center justify-between gap-4 px-4 sm:px-6 md:px-8 lg:px-14">
@@ -168,7 +177,7 @@ export function MainNav() {
             />
           </Link>
           <div className="hidden md:flex items-center gap-6">
-            {(hasToken ? allNavLinks : allNavLinks.filter((l) => l.external)).map(({ label, href, hasDropdown, external }) => {
+            {navLinks.map(({ label, href, hasDropdown, external }) => {
               const isActive = !external && href !== '#' && (pathname === href || pathname.startsWith(href + '/'));
               const linkClass = isActive
                 ? 'text-sm font-semibold text-[#54bd01]'
@@ -332,7 +341,7 @@ export function MainNav() {
                 <SearchBar inline />
               </div>
               <ul className="space-y-1">
-                {(hasToken ? allNavLinks : allNavLinks.filter((l) => l.external)).map(({ label, href, hasDropdown, external }) => {
+                {navLinks.map(({ label, href, hasDropdown, external }) => {
                   const isActive = !external && href !== '#' && (pathname === href || pathname.startsWith(href + '/'));
                   const linkClass = isActive
                     ? 'font-semibold text-[#54bd01]'
