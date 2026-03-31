@@ -92,6 +92,8 @@ export function CourseScormPlayer({
     let latestProgress = 0;
     let latestCompleted = false;
     let hasProgress = false;
+    let lastSavedProgress = 0;
+    let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
     const parsePercent = (value: unknown): number | null => {
       if (typeof value === 'number' && Number.isFinite(value)) {
@@ -145,6 +147,8 @@ export function CourseScormPlayer({
 
     const persist = async (keepalive = false) => {
       if (!hasProgress) return;
+      // Skip duplicate network writes when progress has not moved.
+      if (!latestCompleted && latestProgress <= lastSavedProgress) return;
       try {
         await api.progress.upsert(
           {
@@ -152,15 +156,24 @@ export function CourseScormPlayer({
             progress: latestProgress,
             completed: latestCompleted,
             scormData: {
-              source: 'scorm-close-save',
+              source: 'scorm-step-save',
               capturedAt: new Date().toISOString(),
             },
           },
           { keepalive }
         );
+        lastSavedProgress = Math.max(lastSavedProgress, latestProgress);
       } catch {
         // Ignore to avoid blocking page close.
       }
+    };
+
+    const scheduleStepSave = () => {
+      if (saveTimer) clearTimeout(saveTimer);
+      // Debounce writes while user is actively learning.
+      saveTimer = setTimeout(() => {
+        void persist(false);
+      }, 1200);
     };
 
     const onMessage = (event: MessageEvent) => {
@@ -169,12 +182,14 @@ export function CourseScormPlayer({
         try {
           const parsed = JSON.parse(event.data);
           updateProgressFromUnknown(parsed);
+          scheduleStepSave();
         } catch {
           return;
         }
         return;
       }
       updateProgressFromUnknown(event.data);
+      scheduleStepSave();
     };
 
     const onVisibilityChange = () => {
@@ -187,11 +202,17 @@ export function CourseScormPlayer({
       void persist(true);
     };
 
+    const periodicSave = setInterval(() => {
+      void persist(false);
+    }, 15000);
+
     window.addEventListener('message', onMessage);
     document.addEventListener('visibilitychange', onVisibilityChange);
     window.addEventListener('beforeunload', onBeforeUnload);
 
     return () => {
+      if (saveTimer) clearTimeout(saveTimer);
+      clearInterval(periodicSave);
       window.removeEventListener('message', onMessage);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('beforeunload', onBeforeUnload);
