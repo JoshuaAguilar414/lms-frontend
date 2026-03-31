@@ -70,9 +70,9 @@ export function CourseScormPlayer({
         return;
       }
       try {
-        const orders = await api.orders.list();
+        const enrollments = await api.enrollments.list();
         if (cancelled) return;
-        const matched = orders.find((o) => {
+        const matched = enrollments.find((o) => {
           const currentCourseId = o.courseId?._id;
           const currentShopifyProductId = o.courseId?.shopifyProductId || o.shopifyProductId;
           return currentCourseId === courseId || currentShopifyProductId === courseId;
@@ -219,6 +219,13 @@ export function CourseScormPlayer({
       scheduleStepSave();
     };
 
+    const onRuntimeEvent = (event: Event) => {
+      const custom = event as CustomEvent<Record<string, unknown>>;
+      if (!custom.detail) return;
+      updateProgressFromUnknown(custom.detail);
+      scheduleStepSave();
+    };
+
     const onVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         void persist(true);
@@ -234,6 +241,7 @@ export function CourseScormPlayer({
     }, 15000);
 
     window.addEventListener('message', onMessage);
+    window.addEventListener('lms-scorm-runtime', onRuntimeEvent as EventListener);
     document.addEventListener('visibilitychange', onVisibilityChange);
     window.addEventListener('beforeunload', onBeforeUnload);
 
@@ -241,6 +249,7 @@ export function CourseScormPlayer({
       if (saveTimer) clearTimeout(saveTimer);
       clearInterval(periodicSave);
       window.removeEventListener('message', onMessage);
+      window.removeEventListener('lms-scorm-runtime', onRuntimeEvent as EventListener);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('beforeunload', onBeforeUnload);
       void persist();
@@ -281,16 +290,16 @@ export function CourseScormPlayer({
     completionStatus?: string;
     successStatus?: string;
   }) => {
-    // Reuse the same message ingestion path as SCORM player events.
-    window.postMessage(
-      {
-        progress: data.progress,
-        completionStatus: data.completionStatus,
-        successStatus: data.successStatus,
-        lessonLocation: data.lessonLocation,
-        suspendData: data.suspendData,
-      },
-      window.location.origin
+    window.dispatchEvent(
+      new CustomEvent('lms-scorm-runtime', {
+        detail: {
+          progress: data.progress,
+          completionStatus: data.completionStatus,
+          successStatus: data.successStatus,
+          lessonLocation: data.lessonLocation,
+          suspendData: data.suspendData,
+        },
+      })
     );
   };
 

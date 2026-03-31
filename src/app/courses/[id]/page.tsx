@@ -225,7 +225,7 @@ export default async function CourseProgressPage({ params }: PageProps) {
             </Card>
           )}
           <Card className="mt-4 mb-4 pb-8">
-            <RelatedCoursesSlider courses={relatedCourses} />
+            <RelatedCoursesSlider courses={relatedCourses} productId={numericProductId} />
           </Card>
         </div>
       </div>
