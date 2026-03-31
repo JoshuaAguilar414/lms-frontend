@@ -55,6 +55,22 @@ interface ApiCourse {
   totalLessons?: number;
 }
 
+interface MarketplaceRecommendationProduct {
+  id?: number | string;
+  title?: string;
+  handle?: string;
+  body_html?: string;
+  product_type?: string;
+  image?: {
+    src?: string;
+    alt?: string | null;
+  };
+  images?: Array<{
+    src?: string;
+    alt?: string | null;
+  }>;
+}
+
 async function fetchCourse(id: string): Promise<ApiCourse | null> {
   try {
     const res = await fetch(`${API_BASE}/api/courses/${id}`, {
@@ -74,6 +90,63 @@ async function fetchCourses(): Promise<ApiCourse[]> {
     });
     if (!res.ok) return [];
     return res.json();
+  } catch {
+    return [];
+  }
+}
+
+function toNumericProductId(input?: string): string | null {
+  if (!input) return null;
+  const s = input.trim();
+  if (/^\d+$/.test(s)) return s;
+  const match = s.match(/(\d{6,})/);
+  return match?.[1] ?? null;
+}
+
+function decodeBasicHtmlEntities(input: string): string {
+  return input
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'");
+}
+
+function stripHtml(input?: string): string {
+  if (!input) return '';
+  const decoded = decodeBasicHtmlEntities(input);
+  // Run strip twice so encoded tags that become real tags are also removed.
+  return decoded
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+async function fetchRelatedRecommendations(productId: string): Promise<RelatedCourse[]> {
+  try {
+    const url = `${MARKETPLACE_BASE}/recommendations/products.json?product_id=${encodeURIComponent(
+      productId
+    )}&limit=4&intent=related`;
+    const res = await fetch(url, { next: { revalidate: 300 } });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { products?: MarketplaceRecommendationProduct[] };
+    const products = Array.isArray(data?.products) ? data.products : [];
+    return products
+      .filter((p) => p.handle && p.title)
+      .slice(0, 8)
+      .map((p) => ({
+        id: String(p.id ?? p.handle),
+        title: p.title || 'Course',
+        description: stripHtml(p.body_html),
+        thumbnail:
+          p.image?.src ||
+          p.images?.[0]?.src ||
+          'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=250&fit=crop',
+        tag: p.product_type || 'Course',
+        price: '',
+        href: marketplaceProductUrl(String(p.handle)),
+      }));
   } catch {
     return [];
   }
@@ -111,11 +184,18 @@ export default async function CourseProgressPage({ params }: PageProps) {
   if (!course) notFound();
 
   const scormUrl = buildScormUrl(course);
+  const numericProductId = toNumericProductId(course.shopifyProductId || id);
+  const recommendedCourses = numericProductId
+    ? await fetchRelatedRecommendations(numericProductId)
+    : [];
 
-  const relatedCourses: RelatedCourse[] = allCourses
-    .filter((c) => c._id !== id && c.shopifyProductId !== id)
-    .slice(0, 8)
-    .map(toRelatedCourse);
+  const relatedCourses: RelatedCourse[] =
+    recommendedCourses.length > 0
+      ? recommendedCourses
+      : allCourses
+          .filter((c) => c._id !== id && c.shopifyProductId !== id)
+          .slice(0, 8)
+          .map(toRelatedCourse);
 
   return (
     <AuthGuard>

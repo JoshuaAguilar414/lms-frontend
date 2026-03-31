@@ -24,6 +24,20 @@ interface ScormEmbedProps {
   version?: '1.2' | '2004';
   /** When set (same-origin iframe), name/email fields are filled after load. */
   learner?: ScormLearnerInfo | null;
+  /** Resume state restored into SCORM runtime when possible (same-origin). */
+  resumeState?: {
+    lessonLocation?: string;
+    suspendData?: string;
+  } | null;
+  /** Emits SCORM runtime state when readable (same-origin). */
+  onRuntimeData?: (data: {
+    progress?: number;
+    lessonLocation?: string;
+    suspendData?: string;
+    completionStatus?: string;
+    successStatus?: string;
+    raw?: Record<string, unknown>;
+  }) => void;
 }
 
 export function ScormEmbed({
@@ -33,6 +47,8 @@ export function ScormEmbed({
   minHeight = 600,
   version = '1.2',
   learner = null,
+  resumeState = null,
+  onRuntimeData,
 }: ScormEmbedProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
@@ -44,6 +60,92 @@ export function ScormEmbed({
   useEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe) return;
+    let runtimeTimer: ReturnType<typeof setInterval> | null = null;
+    let resumeApplied = false;
+
+    const clampPercent = (value: number) => Math.max(0, Math.min(100, value));
+
+    const readRuntime = () => {
+      try {
+        const iframeWindow = iframe.contentWindow;
+        if (!iframeWindow) return;
+
+        const api12 = (iframeWindow as Window & { API?: Record<string, unknown> }).API as
+          | {
+              LMSGetValue?: (key: string) => string;
+              LMSSetValue?: (key: string, value: string) => string;
+              LMSCommit?: (param: string) => string;
+            }
+          | undefined;
+        const api2004 = (iframeWindow as Window & { API_1484_11?: Record<string, unknown> })
+          .API_1484_11 as
+          | {
+              GetValue?: (key: string) => string;
+              SetValue?: (key: string, value: string) => string;
+              Commit?: (param: string) => string;
+            }
+          | undefined;
+
+        const getValue = (keys: string[]) => {
+          for (const key of keys) {
+            const value =
+              (api12?.LMSGetValue ? api12.LMSGetValue(key) : '') ||
+              (api2004?.GetValue ? api2004.GetValue(key) : '');
+            if (typeof value === 'string' && value.trim()) return value.trim();
+          }
+          return '';
+        };
+
+        const setValue = (key: string, value: string) => {
+          if (api12?.LMSSetValue) api12.LMSSetValue(key, value);
+          if (api2004?.SetValue) api2004.SetValue(key, value);
+        };
+
+        const commit = () => {
+          if (api12?.LMSCommit) api12.LMSCommit('');
+          if (api2004?.Commit) api2004.Commit('');
+        };
+
+        if (!resumeApplied && resumeState && (api12 || api2004)) {
+          if (resumeState.lessonLocation?.trim()) {
+            setValue('cmi.core.lesson_location', resumeState.lessonLocation.trim());
+            setValue('cmi.location', resumeState.lessonLocation.trim());
+          }
+          if (resumeState.suspendData?.trim()) {
+            setValue('cmi.suspend_data', resumeState.suspendData.trim());
+          }
+          commit();
+          resumeApplied = true;
+        }
+
+        const lessonLocation = getValue(['cmi.core.lesson_location', 'cmi.location']);
+        const suspendData = getValue(['cmi.suspend_data']);
+        const completionStatus = getValue(['cmi.core.lesson_status', 'cmi.completion_status']);
+        const successStatus = getValue(['cmi.success_status']);
+        const rawScore = getValue(['cmi.core.score.raw', 'cmi.score.raw']);
+        const scaledScore = getValue(['cmi.score.scaled']);
+
+        let progress: number | undefined;
+        const rawNum = Number(rawScore);
+        const scaledNum = Number(scaledScore);
+        if (Number.isFinite(rawNum)) progress = clampPercent(rawNum);
+        else if (Number.isFinite(scaledNum)) progress = clampPercent(scaledNum <= 1 ? scaledNum * 100 : scaledNum);
+
+        onRuntimeData?.({
+          progress,
+          lessonLocation: lessonLocation || undefined,
+          suspendData: suspendData || undefined,
+          completionStatus: completionStatus || undefined,
+          successStatus: successStatus || undefined,
+          raw: {
+            rawScore: rawScore || undefined,
+            scaledScore: scaledScore || undefined,
+          },
+        });
+      } catch {
+        // Cross-origin frame or inaccessible runtime.
+      }
+    };
 
     const hideHeaderFooter = () => {
       try {
@@ -165,7 +267,12 @@ export function ScormEmbed({
     const scheduleRuns = () => {
       const delays = learner ? [0, 80, 400, 1200, 2500] : [100, 500];
       delays.forEach((ms) => {
-        loadTimers.push(setTimeout(() => hideHeaderFooter(), ms));
+        loadTimers.push(
+          setTimeout(() => {
+            hideHeaderFooter();
+            readRuntime();
+          }, ms)
+        );
       });
     };
 
@@ -173,12 +280,14 @@ export function ScormEmbed({
 
     iframe.addEventListener('load', handleLoad);
     scheduleRuns();
+    runtimeTimer = setInterval(readRuntime, 3000);
 
     return () => {
       iframe.removeEventListener('load', handleLoad);
       loadTimers.forEach(clearTimeout);
+      if (runtimeTimer) clearInterval(runtimeTimer);
     };
-  }, [url, learner]);
+  }, [url, learner, onRuntimeData, resumeState, version]);
 
   return (
     <div className={`overflow-hidden rounded-lg border border-gray-200 bg-gray-50 ${className}`}>

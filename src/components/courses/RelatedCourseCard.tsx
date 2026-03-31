@@ -9,12 +9,7 @@ interface RelatedCourseCardProps {
 export function RelatedCourseCard({ course }: RelatedCourseCardProps) {
   return (
     <article className="flex h-full min-w-[280px] max-w-[320px] flex-shrink-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
-      <div className="relative p-4 py-2">
-        <span className="inline-block rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
-          {course.tag}
-        </span>
-      </div>
-      <div className="overflow-hidden px-4">
+      <div className="overflow-hidden px-4 pt-4">
         <Image
           src={course.thumbnail}
           alt=""

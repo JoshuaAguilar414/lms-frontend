@@ -32,6 +32,10 @@ export function CourseScormPlayer({
 }) {
   const [learner, setLearner] = useState<ScormLearnerInfo | null>(null);
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
+  const [resumeState, setResumeState] = useState<{
+    lessonLocation?: string;
+    suspendData?: string;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,6 +98,8 @@ export function CourseScormPlayer({
     let hasProgress = false;
     let lastSavedProgress = 0;
     let saveTimer: ReturnType<typeof setTimeout> | null = null;
+    let latestLessonLocation = '';
+    let latestSuspendData = '';
 
     const parsePercent = (value: unknown): number | null => {
       if (typeof value === 'number' && Number.isFinite(value)) {
@@ -143,12 +149,31 @@ export function CourseScormPlayer({
       }
 
       if (latestProgress >= 100) latestCompleted = true;
+
+      const lessonLocation = String(
+        obj.lessonLocation ??
+          obj.lesson_location ??
+          (obj.data as Record<string, unknown> | undefined)?.lessonLocation ??
+          (obj.payload as Record<string, unknown> | undefined)?.lessonLocation ??
+          ''
+      ).trim();
+      if (lessonLocation) latestLessonLocation = lessonLocation;
+
+      const suspendData = String(
+        obj.suspendData ??
+          obj.suspend_data ??
+          (obj.data as Record<string, unknown> | undefined)?.suspendData ??
+          (obj.payload as Record<string, unknown> | undefined)?.suspendData ??
+          ''
+      ).trim();
+      if (suspendData) latestSuspendData = suspendData;
     };
 
     const persist = async (keepalive = false) => {
-      if (!hasProgress) return;
+      const hasBookmark = Boolean(latestLessonLocation || latestSuspendData);
+      if (!hasProgress && !hasBookmark) return;
       // Skip duplicate network writes when progress has not moved.
-      if (!latestCompleted && latestProgress <= lastSavedProgress) return;
+      if (!latestCompleted && latestProgress <= lastSavedProgress && !hasBookmark) return;
       try {
         await api.progress.upsert(
           {
@@ -158,6 +183,8 @@ export function CourseScormPlayer({
             scormData: {
               source: 'scorm-step-save',
               capturedAt: new Date().toISOString(),
+              lessonLocation: latestLessonLocation || undefined,
+              suspendData: latestSuspendData || undefined,
             },
           },
           { keepalive }
@@ -220,5 +247,63 @@ export function CourseScormPlayer({
     };
   }, [enrollmentId]);
 
-  return <ScormEmbed src={src} title={title} minHeight={minHeight} learner={learner} />;
+  useEffect(() => {
+    let cancelled = false;
+    if (!enrollmentId || !getStoredToken()) {
+      setResumeState(null);
+      return;
+    }
+
+    const run = async () => {
+      try {
+        const progress = await api.progress.get(enrollmentId);
+        if (cancelled) return;
+        const data = (progress.scormData ?? {}) as Record<string, unknown>;
+        const lessonLocation =
+          typeof data.lessonLocation === 'string' ? data.lessonLocation : undefined;
+        const suspendData = typeof data.suspendData === 'string' ? data.suspendData : undefined;
+        setResumeState({ lessonLocation, suspendData });
+      } catch {
+        if (!cancelled) setResumeState(null);
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [enrollmentId]);
+
+  const handleRuntimeData = (data: {
+    progress?: number;
+    lessonLocation?: string;
+    suspendData?: string;
+    completionStatus?: string;
+    successStatus?: string;
+  }) => {
+    // This callback is consumed by the saving effect via closure-less window messages;
+    // to keep behavior consistent, forward through postMessage-style channel.
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          progress: data.progress,
+          completionStatus: data.completionStatus,
+          successStatus: data.successStatus,
+          lessonLocation: data.lessonLocation,
+          suspendData: data.suspendData,
+        },
+      })
+    );
+  };
+
+  return (
+    <ScormEmbed
+      src={src}
+      title={title}
+      minHeight={minHeight}
+      learner={learner}
+      resumeState={resumeState}
+      onRuntimeData={handleRuntimeData}
+    />
+  );
 }
