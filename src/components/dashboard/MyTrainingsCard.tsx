@@ -17,6 +17,7 @@ function enrollmentToTrainingItem(e: EnrollmentResponse): TrainingItemType {
   const product = lineItem?.variant?.product;
   const total = Math.max(1, course?.totalLessons ?? 1);
   const pct = e.progress?.progress ?? 0;
+  const progressPercent = Math.max(0, Math.min(100, Math.round(pct)));
   const current = Math.min(total, Math.round((pct / 100) * total));
   const completed = e.progress?.completed ?? false;
   const progressStr = `${current}/${total}`;
@@ -28,6 +29,7 @@ function enrollmentToTrainingItem(e: EnrollmentResponse): TrainingItemType {
     id: e.shopifyProductId ?? course?.shopifyProductId ?? course?._id ?? e._id,
     title: course?.title ?? lineItem?.title ?? product?.title ?? 'Course',
     progress: progressStr,
+    progressPercent,
     thumbnail:
       e.shopifyProductImage ??
       product?.featuredImage?.url ??
@@ -51,8 +53,18 @@ function dedupeTrainingsByCourse(items: TrainingItemType[]): TrainingItemType[] 
     if (!existing) continue;
     const [existingCurrent, existingTotal] = existing.progress.split('/').map((v) => Number(v) || 0);
     const [nextCurrent, nextTotal] = item.progress.split('/').map((v) => Number(v) || 0);
-    const existingPct = existingTotal > 0 ? existingCurrent / existingTotal : 0;
-    const nextPct = nextTotal > 0 ? nextCurrent / nextTotal : 0;
+    const existingPct =
+      existing.progressPercent != null
+        ? existing.progressPercent / 100
+        : existingTotal > 0
+          ? existingCurrent / existingTotal
+          : 0;
+    const nextPct =
+      item.progressPercent != null
+        ? item.progressPercent / 100
+        : nextTotal > 0
+          ? nextCurrent / nextTotal
+          : 0;
     if (nextPct > existingPct) deduped.set(item.id, item);
   }
   return Array.from(deduped.values());

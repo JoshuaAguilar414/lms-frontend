@@ -135,6 +135,38 @@ export const api = {
     /** List courses (synced from Shopify products). No auth required. */
     list: () => request<CourseResponse[]>('/api/courses'),
   },
+  progress: {
+    get: (enrollmentId: string) =>
+      request<{
+        _id: string;
+        enrollmentId: string;
+        progress: number;
+        completed: boolean;
+        timeSpent?: number;
+        scormData?: Record<string, unknown>;
+      }>(`/api/progress/${enrollmentId}`, { token: getStoredToken() }),
+    upsert: (
+      payload: {
+        enrollmentId: string;
+        progress?: number;
+        completed?: boolean;
+        timeSpent?: number;
+        scormData?: Record<string, unknown>;
+      },
+      options: { keepalive?: boolean } = {}
+    ) =>
+      request<{
+        _id: string;
+        enrollmentId: string;
+        progress: number;
+        completed: boolean;
+      }>('/api/progress', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        token: getStoredToken(),
+        keepalive: options.keepalive,
+      }),
+  },
   admin: {
     /**
      * Upload SCORM ZIP and map it to a Shopify/LMS product.

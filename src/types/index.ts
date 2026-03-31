@@ -3,6 +3,7 @@ export interface TrainingItem {
   id: string;
   title: string;
   progress: string;
+  progressPercent?: number;
   thumbnail: string;
   action: 'get_started' | 'resume' | 'view_certificate';
   /** SCORM package URL (e.g. https://example.com/scorm/package/index.html) or SCORM player admissionId for embedding the course content */

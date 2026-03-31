@@ -15,6 +15,8 @@ function parseProgress(progress: string): { current: number; total: number } {
 type ItemState = 'not_started' | 'in_progress' | 'completed';
 
 function getState(item: TrainingItemType): ItemState {
+  if ((item.progressPercent ?? 0) >= 100) return 'completed';
+  if ((item.progressPercent ?? 0) > 0) return 'in_progress';
   const { current, total } = parseProgress(item.progress);
   if (current >= total && total > 0) return 'completed';
   if (current > 0) return 'in_progress';
@@ -31,7 +33,12 @@ const completedPillClass =
 export function TrainingItem({ item }: TrainingItemProps) {
   const state = getState(item);
   const { current, total } = parseProgress(item.progress);
-  const progressPercent = total > 0 ? Math.min(100, (current / total) * 100) : 0;
+  const progressPercent =
+    item.progressPercent != null
+      ? Math.max(0, Math.min(100, item.progressPercent))
+      : total > 0
+        ? Math.min(100, (current / total) * 100)
+        : 0;
 
   return (
     <div className="flex min-h-[100px] flex-col overflow-hidden rounded-[10px] border border-gray-200 bg-white sm:flex-row sm:items-stretch">
@@ -49,9 +56,7 @@ export function TrainingItem({ item }: TrainingItemProps) {
         <div className="min-h-[52px] space-y-1">
           <div className="flex items-center justify-between text-xs text-gray-500">
             <span>Progress</span>
-            <span>
-              {current}/{total}
-            </span>
+            <span>{Math.round(progressPercent)}%</span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
             <div

@@ -123,7 +123,12 @@ export default async function CourseProgressPage({ params }: PageProps) {
         <div className="mx-auto max-w-screen-2xl px-4 py-3 sm:px-6 lg:px-8">
           {scormUrl ? (
             <Card className="mt-4 p-0 overflow-hidden">
-              <CourseScormPlayer src={scormUrl} title={course.title} minHeight={900} />
+              <CourseScormPlayer
+                src={scormUrl}
+                title={course.title}
+                courseId={id}
+                minHeight={900}
+              />
             </Card>
           ) : (
             <Card className="mt-8">
