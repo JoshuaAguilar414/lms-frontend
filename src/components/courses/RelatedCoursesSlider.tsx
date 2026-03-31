@@ -9,7 +9,6 @@ const GAP = 24;
 
 interface RelatedCoursesSliderProps {
   courses: RelatedCourse[];
-  productId?: string | null;
 }
 
 function useHasOverflow(ref: React.RefObject<HTMLDivElement | null>, itemCount: number) {
@@ -42,32 +41,7 @@ function useHasOverflow(ref: React.RefObject<HTMLDivElement | null>, itemCount: 
   return { hasOverflow, canScrollLeft, canScrollRight };
 }
 
-interface MarketplaceRecommendationProduct {
-  id?: number | string;
-  title?: string;
-  handle?: string;
-  body_html?: string;
-  product_type?: string;
-  image?: { src?: string };
-  images?: Array<{ src?: string }>;
-}
-
-const MARKETPLACE_BASE = 'https://marketplace.vectra-intl.com';
-
-function stripHtml(input?: string): string {
-  if (!input) return '';
-  return input
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&amp;/gi, '&')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-export function RelatedCoursesSlider({ courses, productId = null }: RelatedCoursesSliderProps) {
+export function RelatedCoursesSlider({ courses }: RelatedCoursesSliderProps) {
   const [displayCourses, setDisplayCourses] = useState<RelatedCourse[]>(courses);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { hasOverflow, canScrollLeft, canScrollRight } = useHasOverflow(
@@ -78,47 +52,6 @@ export function RelatedCoursesSlider({ courses, productId = null }: RelatedCours
   useEffect(() => {
     setDisplayCourses(courses);
   }, [courses]);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!productId) return;
-
-    const url = `${MARKETPLACE_BASE}/recommendations/products.json?product_id=${encodeURIComponent(
-      productId
-    )}&limit=4&intent=related`;
-
-    const run = async () => {
-      try {
-        const res = await fetch(url);
-        if (!res.ok || cancelled) return;
-        const data = (await res.json()) as { products?: MarketplaceRecommendationProduct[] };
-        const products = Array.isArray(data?.products) ? data.products : [];
-        const mapped: RelatedCourse[] = products
-          .filter((p) => p.handle && p.title)
-          .slice(0, 4)
-          .map((p) => ({
-            id: String(p.id ?? p.handle),
-            title: stripHtml(p.title) || 'Course',
-            description: stripHtml(p.body_html),
-            thumbnail:
-              p.image?.src ||
-              p.images?.[0]?.src ||
-              'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=250&fit=crop',
-            tag: p.product_type || 'Course',
-            price: '',
-            href: `${MARKETPLACE_BASE}/products/${String(p.handle)}`,
-          }));
-        if (!cancelled && mapped.length > 0) setDisplayCourses(mapped);
-      } catch {
-        // keep SSR/fallback courses
-      }
-    };
-
-    void run();
-    return () => {
-      cancelled = true;
-    };
-  }, [productId]);
 
   const scroll = (direction: 'left' | 'right') => {
     const el = scrollRef.current;

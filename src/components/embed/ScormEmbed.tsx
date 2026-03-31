@@ -62,6 +62,7 @@ export function ScormEmbed({
     if (!iframe) return;
     let runtimeTimer: ReturnType<typeof setInterval> | null = null;
     let resumeApplied = false;
+    let apiWrapped = false;
 
     const clampPercent = (value: number) => Math.max(0, Math.min(100, value));
 
@@ -136,6 +137,46 @@ export function ScormEmbed({
           if (api2004?.Commit) api2004.Commit('');
         };
 
+        const emitRuntime = (data: {
+          progress?: number;
+          lessonLocation?: string;
+          suspendData?: string;
+          completionStatus?: string;
+          successStatus?: string;
+          raw?: Record<string, unknown>;
+        }) => {
+          onRuntimeData?.(data);
+          try {
+            window.postMessage(
+              {
+                type: 'lms-scorm-runtime',
+                ...data,
+              },
+              window.location.origin
+            );
+          } catch {
+            // noop
+          }
+        };
+
+        if (!apiWrapped && (api12 || api2004)) {
+          apiWrapped = true;
+          if (api12?.LMSSetValue) {
+            const original = api12.LMSSetValue.bind(api12);
+            api12.LMSSetValue = (key: string, value: string) => {
+              emitRuntime({ raw: { key, value } });
+              return original(key, value);
+            };
+          }
+          if (api2004?.SetValue) {
+            const original = api2004.SetValue.bind(api2004);
+            api2004.SetValue = (key: string, value: string) => {
+              emitRuntime({ raw: { key, value } });
+              return original(key, value);
+            };
+          }
+        }
+
         if (!resumeApplied && resumeState && (api12 || api2004)) {
           if (resumeState.lessonLocation?.trim()) {
             setValue('cmi.core.lesson_location', resumeState.lessonLocation.trim());
@@ -161,7 +202,7 @@ export function ScormEmbed({
         if (Number.isFinite(rawNum)) progress = clampPercent(rawNum);
         else if (Number.isFinite(scaledNum)) progress = clampPercent(scaledNum <= 1 ? scaledNum * 100 : scaledNum);
 
-        onRuntimeData?.({
+        emitRuntime({
           progress,
           lessonLocation: lessonLocation || undefined,
           suspendData: suspendData || undefined,

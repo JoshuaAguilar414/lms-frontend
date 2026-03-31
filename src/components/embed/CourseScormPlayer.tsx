@@ -115,18 +115,33 @@ export function CourseScormPlayer({
     const updateProgressFromUnknown = (source: unknown) => {
       if (!source || typeof source !== 'object') return;
       const obj = source as Record<string, unknown>;
+      const dataObj = (obj.data as Record<string, unknown> | undefined) ?? {};
+      const payloadObj = (obj.payload as Record<string, unknown> | undefined) ?? {};
       const candidates: unknown[] = [
         obj.progress,
         obj.percentage,
         obj.percent,
         obj.score,
         obj.rawScore,
+        obj['cmi.core.score.raw'],
+        obj['cmi.score.raw'],
+        obj['cmi.score.scaled'],
         obj.lessonProgress,
         obj.completion,
-        (obj.data as Record<string, unknown> | undefined)?.progress,
-        (obj.data as Record<string, unknown> | undefined)?.percentage,
-        (obj.payload as Record<string, unknown> | undefined)?.progress,
-        (obj.payload as Record<string, unknown> | undefined)?.percentage,
+        dataObj.progress,
+        dataObj.percentage,
+        dataObj.score,
+        dataObj.rawScore,
+        dataObj['cmi.core.score.raw'],
+        dataObj['cmi.score.raw'],
+        dataObj['cmi.score.scaled'],
+        payloadObj.progress,
+        payloadObj.percentage,
+        payloadObj.score,
+        payloadObj.rawScore,
+        payloadObj['cmi.core.score.raw'],
+        payloadObj['cmi.score.raw'],
+        payloadObj['cmi.score.scaled'],
       ];
       for (const candidate of candidates) {
         const parsed = parsePercent(candidate);
@@ -140,8 +155,16 @@ export function CourseScormPlayer({
       const completionStatus = String(
         obj.completionStatus ??
           obj.lessonStatus ??
-          (obj.data as Record<string, unknown> | undefined)?.completionStatus ??
-          (obj.payload as Record<string, unknown> | undefined)?.completionStatus ??
+          obj['cmi.core.lesson_status'] ??
+          obj['cmi.completion_status'] ??
+          dataObj.completionStatus ??
+          dataObj.lessonStatus ??
+          dataObj['cmi.core.lesson_status'] ??
+          dataObj['cmi.completion_status'] ??
+          payloadObj.completionStatus ??
+          payloadObj.lessonStatus ??
+          payloadObj['cmi.core.lesson_status'] ??
+          payloadObj['cmi.completion_status'] ??
           ''
       ).toLowerCase();
       if (completionStatus.includes('completed') || completionStatus.includes('passed')) {
@@ -153,8 +176,16 @@ export function CourseScormPlayer({
       const lessonLocation = String(
         obj.lessonLocation ??
           obj.lesson_location ??
-          (obj.data as Record<string, unknown> | undefined)?.lessonLocation ??
-          (obj.payload as Record<string, unknown> | undefined)?.lessonLocation ??
+          obj['cmi.core.lesson_location'] ??
+          obj['cmi.location'] ??
+          dataObj.lessonLocation ??
+          dataObj.lesson_location ??
+          dataObj['cmi.core.lesson_location'] ??
+          dataObj['cmi.location'] ??
+          payloadObj.lessonLocation ??
+          payloadObj.lesson_location ??
+          payloadObj['cmi.core.lesson_location'] ??
+          payloadObj['cmi.location'] ??
           ''
       ).trim();
       if (lessonLocation) latestLessonLocation = lessonLocation;
@@ -162,11 +193,54 @@ export function CourseScormPlayer({
       const suspendData = String(
         obj.suspendData ??
           obj.suspend_data ??
-          (obj.data as Record<string, unknown> | undefined)?.suspendData ??
-          (obj.payload as Record<string, unknown> | undefined)?.suspendData ??
+          obj['cmi.suspend_data'] ??
+          dataObj.suspendData ??
+          dataObj.suspend_data ??
+          dataObj['cmi.suspend_data'] ??
+          payloadObj.suspendData ??
+          payloadObj.suspend_data ??
+          payloadObj['cmi.suspend_data'] ??
           ''
       ).trim();
       if (suspendData) latestSuspendData = suspendData;
+
+      // Common SCORM SetValue event shape: { key/name/element, value }
+      const scormKey = String(
+        obj.key ?? obj.name ?? obj.element ?? dataObj.key ?? payloadObj.key ?? ''
+      ).trim();
+      const scormValueRaw =
+        obj.value ?? obj.val ?? dataObj.value ?? dataObj.val ?? payloadObj.value ?? payloadObj.val;
+      const scormValue =
+        typeof scormValueRaw === 'string' || typeof scormValueRaw === 'number'
+          ? String(scormValueRaw).trim()
+          : '';
+      if (scormKey && scormValue) {
+        if (scormKey === 'cmi.core.lesson_location' || scormKey === 'cmi.location') {
+          latestLessonLocation = scormValue;
+        }
+        if (scormKey === 'cmi.suspend_data') {
+          latestSuspendData = scormValue;
+        }
+        if (
+          scormKey === 'cmi.core.score.raw' ||
+          scormKey === 'cmi.score.raw' ||
+          scormKey === 'cmi.score.scaled'
+        ) {
+          const parsed = parsePercent(scormValue);
+          if (parsed != null) {
+            latestProgress = Math.max(latestProgress, parsed);
+            hasProgress = true;
+          }
+        }
+        if (
+          scormKey === 'cmi.core.lesson_status' ||
+          scormKey === 'cmi.completion_status' ||
+          scormKey === 'cmi.success_status'
+        ) {
+          const s = scormValue.toLowerCase();
+          if (s.includes('completed') || s.includes('passed')) latestCompleted = true;
+        }
+      }
     };
 
     const persist = async (keepalive = false) => {

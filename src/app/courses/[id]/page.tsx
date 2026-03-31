@@ -55,22 +55,6 @@ interface ApiCourse {
   totalLessons?: number;
 }
 
-interface MarketplaceRecommendationProduct {
-  id?: number | string;
-  title?: string;
-  handle?: string;
-  body_html?: string;
-  product_type?: string;
-  image?: {
-    src?: string;
-    alt?: string | null;
-  };
-  images?: Array<{
-    src?: string;
-    alt?: string | null;
-  }>;
-}
-
 async function fetchCourse(id: string): Promise<ApiCourse | null> {
   try {
     const res = await fetch(`${API_BASE}/api/courses/${id}`, {
@@ -125,28 +109,13 @@ function stripHtml(input?: string): string {
 
 async function fetchRelatedRecommendations(productId: string): Promise<RelatedCourse[]> {
   try {
-    const url = `${MARKETPLACE_BASE}/recommendations/products.json?product_id=${encodeURIComponent(
+    const url = `${API_BASE}/api/recommendations?product_id=${encodeURIComponent(
       productId
-    )}&limit=4&intent=related`;
+    )}&limit=4`;
     const res = await fetch(url, { next: { revalidate: 300 } });
     if (!res.ok) return [];
-    const data = (await res.json()) as { products?: MarketplaceRecommendationProduct[] };
-    const products = Array.isArray(data?.products) ? data.products : [];
-    return products
-      .filter((p) => p.handle && p.title)
-      .slice(0, 4)
-      .map((p) => ({
-        id: String(p.id ?? p.handle),
-        title: stripHtml(p.title) || 'Course',
-        description: stripHtml(p.body_html),
-        thumbnail:
-          p.image?.src ||
-          p.images?.[0]?.src ||
-          'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=250&fit=crop',
-        tag: p.product_type || 'Course',
-        price: '',
-        href: marketplaceProductUrl(String(p.handle)),
-      }));
+    const data = (await res.json()) as RelatedCourse[];
+    return Array.isArray(data) ? data.slice(0, 4) : [];
   } catch {
     return [];
   }
@@ -225,7 +194,7 @@ export default async function CourseProgressPage({ params }: PageProps) {
             </Card>
           )}
           <Card className="mt-4 mb-4 pb-8">
-            <RelatedCoursesSlider courses={relatedCourses} productId={numericProductId} />
+            <RelatedCoursesSlider courses={relatedCourses} />
           </Card>
         </div>
       </div>
