@@ -134,10 +134,10 @@ async function fetchRelatedRecommendations(productId: string): Promise<RelatedCo
     const products = Array.isArray(data?.products) ? data.products : [];
     return products
       .filter((p) => p.handle && p.title)
-      .slice(0, 8)
+      .slice(0, 4)
       .map((p) => ({
         id: String(p.id ?? p.handle),
-        title: p.title || 'Course',
+        title: stripHtml(p.title) || 'Course',
         description: stripHtml(p.body_html),
         thumbnail:
           p.image?.src ||
@@ -160,8 +160,8 @@ function coursePagePath(c: ApiCourse): string {
 function toRelatedCourse(c: ApiCourse): RelatedCourse {
   return {
     id: c._id,
-    title: c.title,
-    description: c.description ?? '',
+    title: stripHtml(c.title) || 'Course',
+    description: stripHtml(c.description),
     thumbnail: c.thumbnail ?? 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=250&fit=crop',
     tag: 'Course',
     price: '',
@@ -194,7 +194,7 @@ export default async function CourseProgressPage({ params }: PageProps) {
       ? recommendedCourses
       : allCourses
           .filter((c) => c._id !== id && c.shopifyProductId !== id)
-          .slice(0, 8)
+          .slice(0, 4)
           .map(toRelatedCourse);
 
   return (

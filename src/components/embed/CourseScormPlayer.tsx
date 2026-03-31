@@ -281,18 +281,16 @@ export function CourseScormPlayer({
     completionStatus?: string;
     successStatus?: string;
   }) => {
-    // This callback is consumed by the saving effect via closure-less window messages;
-    // to keep behavior consistent, forward through postMessage-style channel.
-    window.dispatchEvent(
-      new MessageEvent('message', {
-        data: {
-          progress: data.progress,
-          completionStatus: data.completionStatus,
-          successStatus: data.successStatus,
-          lessonLocation: data.lessonLocation,
-          suspendData: data.suspendData,
-        },
-      })
+    // Reuse the same message ingestion path as SCORM player events.
+    window.postMessage(
+      {
+        progress: data.progress,
+        completionStatus: data.completionStatus,
+        successStatus: data.successStatus,
+        lessonLocation: data.lessonLocation,
+        suspendData: data.suspendData,
+      },
+      window.location.origin
     );
   };
 

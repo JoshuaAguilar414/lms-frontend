@@ -70,14 +70,44 @@ export function ScormEmbed({
         const iframeWindow = iframe.contentWindow;
         if (!iframeWindow) return;
 
-        const api12 = (iframeWindow as Window & { API?: Record<string, unknown> }).API as
+        const collectWindows = (root: Window): Window[] => {
+          const visited = new Set<Window>();
+          const stack: Window[] = [root];
+          const all: Window[] = [];
+          while (stack.length > 0) {
+            const current = stack.pop() as Window;
+            if (visited.has(current)) continue;
+            visited.add(current);
+            all.push(current);
+            try {
+              const len = current.frames?.length ?? 0;
+              for (let i = 0; i < len; i += 1) {
+                const child = current.frames[i];
+                if (child) stack.push(child);
+              }
+            } catch {
+              // Ignore cross-origin child frames.
+            }
+          }
+          return all;
+        };
+
+        const runtimeWindows = collectWindows(iframeWindow);
+        const holder = runtimeWindows.find((w) => {
+          const has12 = Boolean((w as Window & { API?: unknown }).API);
+          const has2004 = Boolean((w as Window & { API_1484_11?: unknown }).API_1484_11);
+          return has12 || has2004;
+        });
+        const runtimeWindow = holder ?? iframeWindow;
+
+        const api12 = (runtimeWindow as Window & { API?: Record<string, unknown> }).API as
           | {
               LMSGetValue?: (key: string) => string;
               LMSSetValue?: (key: string, value: string) => string;
               LMSCommit?: (param: string) => string;
             }
           | undefined;
-        const api2004 = (iframeWindow as Window & { API_1484_11?: Record<string, unknown> })
+        const api2004 = (runtimeWindow as Window & { API_1484_11?: Record<string, unknown> })
           .API_1484_11 as
           | {
               GetValue?: (key: string) => string;
